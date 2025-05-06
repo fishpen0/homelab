@@ -7,8 +7,8 @@ tpi power on -n2
 # wait for it to boot and get the IPs (assumed to be the ones below)
 tpi uart -n1 get
 
-# Generate the talos config from the controlplane patch
-talosctl gen config turingpi https://192.168.1.10:6443 --config-patch-control-plane @controlplane.patch.yaml
+# Generate the talos config from the talconfig
+talhelper genconfig
 
 # Add talosconfig to env
 export TALOSCONFIG=$(pwd)/talosconfig
