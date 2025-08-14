@@ -20,6 +20,10 @@ spec:
     defaultSettings:
       defaultReplicaCount: 1
       backupstorePollInterval: 300
+      createDefaultDiskLabeledNodes: true
+      guaranteedInstanceManagerCPU: 8
+      guaranteedEngineManagerCPU: 8
+      logLevel: debug
     persistence:
       defaultClassReplicaCount: 1
     csi:
