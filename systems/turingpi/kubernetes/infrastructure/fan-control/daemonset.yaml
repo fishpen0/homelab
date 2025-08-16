@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fan-control
+  namespace: kube-system
+  labels:
+    app: fan-control
+spec:
+  selector:
+    matchLabels:
+      app: fan-control
+  template:
+    metadata:
+      labels:
+        app: fan-control
+    spec:
+      # Only run on RK1 nodes (control plane nodes)
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      # Run as privileged to access hardware
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: fan-control
+        image: busybox:1.35
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          # Wait for system to be ready
+          sleep 30
+          
+          # Set fan speed to quieter level (100 out of 255)
+          echo 100 > /sys/devices/platform/pwm-fan/hwmon/hwmon*/pwm1 2>/dev/null || true
+          
+          # Keep container running to maintain fan settings
+          while true; do
+            sleep 300
+            # Re-apply fan settings every 5 minutes in case they get reset
+            echo 100 > /sys/devices/platform/pwm-fan/hwmon/hwmon*/pwm1 2>/dev/null || true
+          done
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: sysfs
+          mountPath: /sys
+      volumes:
+      - name: sysfs
+        hostPath:
+          path: /sys
+          type: Directory
+      # Restart policy for the pod
+      restartPolicy: Always
+      # Tolerations for control plane nodes
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
