@@ -21,6 +21,20 @@
         "--toolsets",
         "repos,pull_requests"
       ]
+    },
+    "kubernetes": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-kubernetes"],
+      "env": {
+        "KUBECONFIG": "~/.kube/config"
+      }
+    },
+    "flux": {
+      "command": "flux-operator-mcp",
+      "args": ["serve"],
+      "env": {
+        "KUBECONFIG": ".kube/config"
+      }
     }
   }
 }
