@@ -109,8 +109,11 @@ spec:
           type: Directory
       # Restart policy for the pod
       restartPolicy: Always
-      # Tolerations for all nodes (removed control plane restriction)
-      # tolerations:
-      # - key: node-role.kubernetes.io/control-plane
-      #   operator: Exists
-      #   effect: NoSchedule
+      # Tolerations for all nodes including control plane nodes
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/worker
+        operator: Exists
+        effect: NoSchedule
