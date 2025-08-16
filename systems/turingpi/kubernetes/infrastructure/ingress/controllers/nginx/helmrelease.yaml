@@ -34,8 +34,8 @@ spec:
         enabled: false
       podSecurityContext:
         fsGroup: 101
-        runAsNonRoot: true
-        runAsUser: 101
+        runAsNonRoot: false
+        runAsUser: 0
       containerSecurityContext:
         allowPrivilegeEscalation: false
         capabilities:
