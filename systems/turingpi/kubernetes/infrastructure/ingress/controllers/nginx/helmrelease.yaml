@@ -32,16 +32,7 @@ spec:
         use-forwarded-headers: "true"
       admissionWebhooks:
         enabled: false
-      podSecurityContext:
-        fsGroup: 101
-        runAsNonRoot: false
-        runAsUser: 0
-      containerSecurityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
-        readOnlyRootFilesystem: false
+
       nodeSelector:
         node-role.kubernetes.io/worker: "true"
       tolerations:
