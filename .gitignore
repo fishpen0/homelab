@@ -35,3 +35,9 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Talos cluster sensitive files
+systems/turingpi/talos/age-key.txt
+systems/turingpi/talos/talsecret.sops.yaml
+systems/turingpi/talos/.sops.yaml
+systems/turingpi/talos/clusterconfig/

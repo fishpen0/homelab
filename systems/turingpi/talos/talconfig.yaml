@@ -1,6 +1,6 @@
 clusterName: turingpi
-talosVersion: v1.9.5
-endpoint: https://192.168.1.10:6443
+talosVersion: v1.10.6
+endpoint: https://192.168.1.224:6443
 allowSchedulingOnControlPlanes: true
 
 controlPlane:
@@ -16,20 +16,19 @@ controlPlane:
                 - bind
                 - rshared
                 - rw
+
 worker:
   patches:
     - *baselonghorn
 
 nodes:
   - hostname: "n1"
-    ipAddress: 192.168.1.11
+    ipAddress: 192.168.1.224
     installDisk: /dev/nvme0n1
     controlPlane: true
     networkInterfaces:
       - interface: eth0
-        dhcp: false
-        addresses:
-          - 192.168.1.11/24
+        dhcp: true
         routes: &routes
           - network: 0.0.0.0/0
             gateway: 192.168.1.1
@@ -41,37 +40,31 @@ nodes:
             - siderolabs/iscsi-tools
             - siderolabs/util-linux-tools
   - hostname: "n2"
-    ipAddress: 192.168.1.12
+    ipAddress: 192.168.1.226
     installDisk: /dev/nvme0n1
     controlPlane: true
     networkInterfaces:
       - interface: eth0
-        dhcp: false
-        addresses:
-          - 192.168.1.12/24
+        dhcp: true
         routes: *routes
     schematic:
       customization: *customization
   - hostname: "n3"
-    ipAddress: 192.168.1.13
+    ipAddress: 192.168.1.223
     installDisk: /dev/nvme0n1
     controlPlane: true
     networkInterfaces:
       - interface: eth0
-        dhcp: false
-        addresses:
-          - 192.168.1.13/24
+        dhcp: true
         routes: *routes
     schematic:
       customization: *customization
   - hostname: "n4"
-    ipAddress: 192.168.1.14
+    ipAddress: 192.168.1.225
     installDisk: /dev/nvme0n1
     networkInterfaces:
       - interface: eth0
-        dhcp: false
-        addresses:
-          - 192.168.1.14/24
+        dhcp: true
         routes: *routes
     schematic:
       customization: *customization

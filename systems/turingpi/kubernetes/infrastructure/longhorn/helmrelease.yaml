@@ -18,16 +18,34 @@ spec:
     createNamespace: true
   values:
     defaultSettings:
-      defaultReplicaCount: 1
+      defaultReplicaCount: 2
       backupstorePollInterval: 300
       createDefaultDiskLabeledNodes: true
-      guaranteedInstanceManagerCPU: 8
-      guaranteedEngineManagerCPU: 8
-      logLevel: debug
+      guaranteedInstanceManagerCPU: 12
+      guaranteedEngineManagerCPU: 12
+      logLevel: info
+      # Performance optimizations for SSDs
+      concurrentReplicaRebuildPerNodeLimit: 5
+      concurrentBackupRestorePerNodeLimit: 5
+      # Storage settings
+      storageNetwork: ""
+      v2DataEngine: true
+      # Monitoring
+      createDefaultDiskLabeledNodes: true
+      defaultDataPath: /var/lib/longhorn
     persistence:
-      defaultClassReplicaCount: 1
+      defaultClassReplicaCount: 2
+      defaultClass: true
     csi:
-      attacherReplicaCount: 1
-      provisionerReplicaCount: 1
-      resizerReplicaCount: 1
-      snapshotterReplicaCount: 1 
+      attacherReplicaCount: 2
+      provisionerReplicaCount: 2
+      resizerReplicaCount: 2
+      snapshotterReplicaCount: 2
+      kubeletRootDir: /var/lib/kubelet
+    # Node selector for worker nodes only
+    nodeSelector:
+      node-role.kubernetes.io/worker: ""
+    # Priority class for critical components
+    priorityClass:
+      create: true
+      value: 1000000 
