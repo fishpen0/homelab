@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - longhorn
   - fan-control
+  - lgtm
 # Add more infrastructure components as needed
 # Add infrastructure components here, like:
 # - metrics-server

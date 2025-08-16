@@ -1,0 +1,178 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: mimir
+  namespace: lgtm
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: mimir
+      version: "5.7.0"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: lgtm
+  values:
+    mimir:
+      structuredConfig:
+        common:
+          storage:
+            engine: filesystem
+            filesystem:
+              dir: /var/mimir/data
+          replication_factor: 2
+        ingester:
+          ring:
+            kvstore:
+              store: memberlist
+            heartbeat_timeout: 1m
+            heartbeat_interval: 10s
+          max_ingestion_rate: 15000
+          max_ingestion_burst_size: 20000
+          max_global_series_per_user: 5000000
+          max_global_series_per_metric: 100000
+          max_global_exemplars_per_user: 100000
+          max_global_metadata_per_user: 100000
+          max_global_metadata_per_metric: 10000
+          max_global_series_per_user: 5000000
+          max_global_series_per_metric: 100000
+          max_global_exemplars_per_user: 100000
+          max_global_metadata_per_user: 100000
+          max_global_metadata_per_metric: 10000
+        distributor:
+          ring:
+            kvstore:
+              store: memberlist
+            heartbeat_timeout: 1m
+            heartbeat_interval: 10s
+          rate_limiting:
+            strategy: local
+            local:
+              ingestion_rate: 15000
+              ingestion_burst_size: 20000
+        compactor:
+          ring:
+            kvstore:
+              store: memberlist
+            heartbeat_timeout: 1m
+            heartbeat_interval: 10s
+          retention_enabled: true
+          retention_delete_delay: 2h
+          retention_delete_worker_count: 150
+          delete_request_cancel_period: 24h
+          max_compaction_parallelism: 1
+          compaction_timeout: 10m
+          retention_delete_timeout: 5m
+        store_gateway:
+          ring:
+            kvstore:
+              store: memberlist
+            heartbeat_timeout: 1m
+            heartbeat_interval: 10s
+        ruler:
+          ring:
+            kvstore:
+              store: memberlist
+            heartbeat_timeout: 1m
+            heartbeat_interval: 10s
+          rule_path: /var/mimir/rules
+          storage:
+            type: local
+            local:
+              directory: /var/mimir/rules
+          wal:
+            dir: /var/mimir/wal
+        alertmanager:
+          ring:
+            kvstore:
+              store: memberlist
+            heartbeat_timeout: 1m
+            heartbeat_interval: 10s
+          storage:
+            type: local
+            local:
+              directory: /var/mimir/alertmanager
+          wal:
+            dir: /var/mimir/alertmanager/wal
+        limits:
+          max_global_series_per_user: 5000000
+          max_global_series_per_metric: 100000
+          max_global_exemplars_per_user: 100000
+          max_global_metadata_per_user: 100000
+          max_global_metadata_per_metric: 10000
+          max_global_series_per_user: 5000000
+          max_global_series_per_metric: 100000
+          max_global_exemplars_per_user: 100000
+          max_global_metadata_per_user: 100000
+          max_global_metadata_per_metric: 10000
+        memberlist:
+          join_members:
+            - mimir-memberlist:7946
+        server:
+          http_listen_port: 9009
+          grpc_listen_port: 9095
+        common:
+          path_prefix: /var/mimir
+          storage:
+            filesystem:
+              dir: /var/mimir/data
+          replication_factor: 2
+          ring:
+            kvstore:
+              store: memberlist
+            heartbeat_timeout: 1m
+            heartbeat_interval: 10s
+        monitoring:
+          self_monitoring:
+            enabled: false
+        serviceMonitor:
+          enabled: false
+        service:
+          type: ClusterIP
+          port: 9009
+        ingress:
+          enabled: false
+        podAnnotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "9009"
+        podSecurityContext:
+          fsGroup: 1000
+          runAsNonRoot: true
+          runAsUser: 1000
+        containerSecurityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        nodeSelector:
+          node-role.kubernetes.io/worker: ""
+        tolerations:
+          - key: node-role.kubernetes.io/control-plane
+            operator: Exists
+            effect: NoSchedule
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: app.kubernetes.io/name
+                        operator: In
+                        values:
+                          - mimir
+                  topologyKey: kubernetes.io/hostname
+        persistence:
+          enabled: true
+          size: 20Gi
+          storageClass: longhorn
+          accessMode: ReadWriteOnce
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi

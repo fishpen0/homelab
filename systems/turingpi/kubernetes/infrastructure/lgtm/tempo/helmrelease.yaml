@@ -1,0 +1,112 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: tempo
+  namespace: lgtm
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: tempo
+      version: "1.8.0"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: lgtm
+  values:
+    tempo:
+      retention: 168h  # 7 days
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+      storage:
+        trace:
+          backend: local
+          local:
+            path: /var/tempo/traces
+            size: 5Gi
+            storageClass: longhorn
+            accessMode: ReadWriteOnce
+      compactor:
+        retention: 168h
+        compaction:
+          block_retention: 168h
+          compacted_block_retention: 1h
+      distributor:
+        receivers:
+          jaeger:
+            protocols:
+              thrift_http:
+                endpoint: "0.0.0.0:14268"
+              grpc:
+                endpoint: "0.0.0.0:14250"
+              thrift_binary:
+                endpoint: "0.0.0.0:6832"
+              thrift_compact:
+                endpoint: "0.0.0.0:6831"
+          otlp:
+            protocols:
+              grpc:
+                endpoint: "0.0.0.0:4317"
+              http:
+                endpoint: "0.0.0.0:4318"
+          zipkin:
+            endpoint: "0.0.0.0:9411"
+      ingester:
+        max_block_bytes: 268435456  # 256MB
+        max_block_duration: 5m
+        retention: 168h
+      querier:
+        search:
+          default_results_limit: 20
+          max_results_limit: 1000
+      metrics_generator:
+        registry:
+          external_labels:
+            cluster: turingpi
+            namespace: lgtm
+      server:
+        http_listen_port: 3200
+        grpc_listen_port: 9095
+      serviceMonitor:
+        enabled: false
+      service:
+        type: ClusterIP
+        port: 3200
+      ingress:
+        enabled: false
+      podAnnotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3200"
+      podSecurityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - tempo
+                topologyKey: kubernetes.io/hostname

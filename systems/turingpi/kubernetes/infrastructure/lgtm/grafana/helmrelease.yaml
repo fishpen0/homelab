@@ -1,0 +1,111 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: grafana
+  namespace: lgtm
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: grafana
+      version: "7.0.19"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: lgtm
+  values:
+    adminPassword: admin
+    adminUser: admin
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: longhorn
+      accessMode: ReadWriteOnce
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+          - name: Loki
+            type: loki
+            url: http://loki:3100
+            access: proxy
+            isDefault: false
+          - name: Tempo
+            type: tempo
+            url: http://tempo:3200
+            access: proxy
+            isDefault: false
+          - name: Mimir
+            type: prometheus
+            url: http://mimir:9009/prometheus
+            access: proxy
+            isDefault: true
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+    dashboards:
+      default:
+        loki-overview:
+          gnetId: 12019
+          revision: 1
+          datasource: Loki
+        tempo-overview:
+          gnetId: 14215
+          revision: 1
+          datasource: Tempo
+        node-exporter:
+          gnetId: 1860
+          revision: 26
+          datasource: Mimir
+    service:
+      type: ClusterIP
+      port: 80
+    ingress:
+      enabled: false
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "3000"
+    podSecurityContext:
+      fsGroup: 472
+      runAsNonRoot: true
+      runAsUser: 472
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: false
+    nodeSelector:
+      node-role.kubernetes.io/worker: ""
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - grafana
+              topologyKey: kubernetes.io/hostname
