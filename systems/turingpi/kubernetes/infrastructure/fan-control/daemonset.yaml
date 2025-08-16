@@ -32,14 +32,20 @@ spec:
           # Wait for system to be ready
           sleep 30
           
+          # Enable PWM control first
+          echo 1 > /sys/devices/platform/pwm-fan/hwmon/hwmon1/pwm1_enable 2>/dev/null || true
+          
           # Set fan speed to quieter level (100 out of 255)
-          echo 100 > /sys/devices/platform/pwm-fan/hwmon/hwmon*/pwm1 2>/dev/null || true
+          echo 100 > /sys/devices/platform/pwm-fan/hwmon/hwmon1/pwm1 2>/dev/null || true
+          
+          echo "Fan control initialized - PWM enabled, speed set to 100"
           
           # Keep container running to maintain fan settings
           while true; do
             sleep 300
             # Re-apply fan settings every 5 minutes in case they get reset
-            echo 100 > /sys/devices/platform/pwm-fan/hwmon/hwmon*/pwm1 2>/dev/null || true
+            echo 100 > /sys/devices/platform/pwm-fan/hwmon/hwmon1/pwm1 2>/dev/null || true
+            echo "Fan speed maintained at 100"
           done
         securityContext:
           privileged: true
