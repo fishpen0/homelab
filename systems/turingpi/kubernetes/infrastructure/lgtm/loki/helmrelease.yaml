@@ -53,18 +53,6 @@ spec:
           max_query_series: 500
           max_streams_matchers_per_query: 1000
           max_concurrent_tail_requests: 100
-          max_cache_fresh_items_per_query: 1000
-          max_entries_limit_per_query: 5000
-          max_query_length: 721h
-          max_query_parallelism: 32
-          cardinality_limit: 100000
-          max_streams_per_user: 0
-          max_global_streams_per_user: 0
-          ingestion_rate_mb: 4
-          ingestion_burst_size_mb: 6
-          max_query_series: 500
-          max_streams_matchers_per_query: 1000
-          max_concurrent_tail_requests: 100
         storage_config:
           filesystem:
             chunks_directory: /var/loki/chunks
@@ -84,9 +72,6 @@ spec:
           retention_delete_delay: 2h
           retention_delete_worker_count: 150
           delete_request_cancel_period: 24h
-          max_compaction_parallelism: 1
-          compaction_timeout: 10m
-          retention_delete_timeout: 5m
           max_compaction_parallelism: 1
           compaction_timeout: 10m
           retention_delete_timeout: 5m
@@ -129,18 +114,7 @@ spec:
         server:
           http_listen_port: 3100
           grpc_listen_port: 9096
-        common:
-          path_prefix: /var/loki
-          storage:
-            filesystem:
-              chunks_directory: /var/loki/chunks
-              rules_directory: /var/loki/rules
-          replication_factor: 2
-          ring:
-            kvstore:
-              store: memberlist
-            heartbeat_timeout: 1m
-            heartbeat_interval: 10s
+
         monitoring:
           self_monitoring:
             enabled: false

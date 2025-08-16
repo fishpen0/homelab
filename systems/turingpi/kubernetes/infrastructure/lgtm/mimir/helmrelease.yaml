@@ -35,11 +35,6 @@ spec:
           max_global_exemplars_per_user: 100000
           max_global_metadata_per_user: 100000
           max_global_metadata_per_metric: 10000
-          max_global_series_per_user: 5000000
-          max_global_series_per_metric: 100000
-          max_global_exemplars_per_user: 100000
-          max_global_metadata_per_user: 100000
-          max_global_metadata_per_metric: 10000
         distributor:
           ring:
             kvstore:
@@ -101,28 +96,13 @@ spec:
           max_global_exemplars_per_user: 100000
           max_global_metadata_per_user: 100000
           max_global_metadata_per_metric: 10000
-          max_global_series_per_user: 5000000
-          max_global_series_per_metric: 100000
-          max_global_exemplars_per_user: 100000
-          max_global_metadata_per_user: 100000
-          max_global_metadata_per_metric: 10000
         memberlist:
           join_members:
             - mimir-memberlist:7946
         server:
           http_listen_port: 9009
           grpc_listen_port: 9095
-        common:
-          path_prefix: /var/mimir
-          storage:
-            filesystem:
-              dir: /var/mimir/data
-          replication_factor: 2
-          ring:
-            kvstore:
-              store: memberlist
-            heartbeat_timeout: 1m
-            heartbeat_interval: 10s
+
         monitoring:
           self_monitoring:
             enabled: false

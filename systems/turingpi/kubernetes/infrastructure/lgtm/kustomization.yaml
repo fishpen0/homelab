@@ -6,4 +6,4 @@ resources:
   - grafana
   - tempo
   - mimir
-  - ingress
+# Ingress rules moved to centralized ingress/rules/lgtm

@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - longhorn
   - fan-control
-  - ingress-nginx
+  - ingress
   - lgtm
 # Add more infrastructure components as needed
 # Add infrastructure components here, like:
