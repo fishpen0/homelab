@@ -14,9 +14,9 @@ spec:
       labels:
         app: fan-control
     spec:
-      # Only run on RK1 nodes (control plane nodes)
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: ""
+      # Run on all nodes (removed control plane restriction)
+      # nodeSelector:
+      #   node-role.kubernetes.io/control-plane: ""
       # Run as privileged to access hardware
       securityContext:
         runAsUser: 0
@@ -36,9 +36,9 @@ spec:
           echo 1 > /sys/devices/platform/pwm-fan/hwmon/hwmon1/pwm1_enable 2>/dev/null || true
           
           # Temperature thresholds (in millidegrees Celsius)
-          TEMP_LOW=40000    # 40°C - start fans (more conservative)
-          TEMP_HIGH=60000   # 60°C - max fans (lower threshold)
-          TEMP_CRITICAL=75000 # 75°C - emergency cooling (more conservative)
+          TEMP_LOW=45000    # 45°C - start fans
+          TEMP_HIGH=65000   # 65°C - max fans
+          TEMP_CRITICAL=80000 # 80°C - emergency cooling
           
           # Fan speed mapping
           FAN_OFF=0
@@ -109,8 +109,8 @@ spec:
           type: Directory
       # Restart policy for the pod
       restartPolicy: Always
-      # Tolerations for control plane nodes
-      tolerations:
-      - key: node-role.kubernetes.io/control-plane
-        operator: Exists
-        effect: NoSchedule
+      # Tolerations for all nodes (removed control plane restriction)
+      # tolerations:
+      # - key: node-role.kubernetes.io/control-plane
+      #   operator: Exists
+      #   effect: NoSchedule
