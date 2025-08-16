@@ -127,7 +127,7 @@ spec:
               - ALL
           readOnlyRootFilesystem: true
         nodeSelector:
-          node-role.kubernetes.io/worker: ""
+          node-role.kubernetes.io/worker: "true"
         tolerations:
           - key: node-role.kubernetes.io/control-plane
             operator: Exists
