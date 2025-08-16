@@ -91,22 +91,29 @@ kubectl get pods -n lgtm
 
 ## Access
 
-### Grafana
-- **URL**: http://grafana.lgtm.svc.cluster.local:80
-- **Credentials**: admin/admin
-- **Port Forward**: `kubectl port-forward -n lgtm svc/grafana 3000:80`
+### Via Ingress (Recommended)
+Once the ingress controller is deployed, you can access services directly:
 
-### Loki
-- **URL**: http://loki.lgtm.svc.cluster.local:3100
-- **Port Forward**: `kubectl port-forward -n lgtm svc/loki 3100:3100`
+- **Grafana**: http://grafana.turingpi.local (admin/admin)
+- **Loki**: http://loki.turingpi.local
+- **Tempo**: http://tempo.turingpi.local
+- **Mimir**: http://mimir.turingpi.local
+- **Combined Dashboard**: http://lgtm.turingpi.local
 
-### Tempo
-- **URL**: http://tempo.lgtm.svc.cluster.local:3200
-- **Port Forward**: `kubectl port-forward -n lgtm svc/tempo 3200:3200`
+### Setup Local DNS
+Run the setup script to add local DNS entries:
+```bash
+chmod +x systems/turingpi/kubernetes/infrastructure/lgtm/ingress/setup-local-dns.sh
+./systems/turingpi/kubernetes/infrastructure/lgtm/ingress/setup-local-dns.sh
+```
 
-### Mimir
-- **URL**: http://mimir.lgtm.svc.cluster.local:9009
-- **Port Forward**: `kubectl port-forward -n lgtm svc/mimir 9009:9009`
+### Via Port Forward (Alternative)
+If you prefer port-forwarding:
+
+- **Grafana**: `kubectl port-forward -n lgtm svc/grafana 3000:80`
+- **Loki**: `kubectl port-forward -n lgtm svc/loki 3100:3100`
+- **Tempo**: `kubectl port-forward -n lgtm svc/tempo 3200:3200`
+- **Mimir**: `kubectl port-forward -n lgtm svc/mimir 9009:9009`
 
 
 
