@@ -1,0 +1,19 @@
+{
+  "name": "homelab",
+  "version": "1.0.0",
+  "description": "Homelab infrastructure management with MCP servers",
+  "scripts": {
+    "postinstall": "echo 'MCP configuration updated successfully'"
+  },
+  "devDependencies": {
+    "envmcp": "^0.2.1"
+  },
+  "keywords": [
+    "homelab",
+    "mcp",
+    "kubernetes",
+    "talos"
+  ],
+  "author": "",
+  "license": "MIT"
+}
