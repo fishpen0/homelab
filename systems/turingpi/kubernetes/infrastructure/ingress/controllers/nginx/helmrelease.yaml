@@ -41,7 +41,7 @@ spec:
         capabilities:
           drop:
             - ALL
-        readOnlyRootFilesystem: true
+        readOnlyRootFilesystem: false
       nodeSelector:
         node-role.kubernetes.io/worker: "true"
       tolerations:
