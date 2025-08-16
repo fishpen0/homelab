@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": {
+        "ROOT_PATH": ".",
+        "ALLOWED_PATHS": ".,/etc,/var/lib,/home,/opt"
+      }
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@cyanheads/git-mcp-server"],
+      "env": {
+        "GIT_ROOT": "."
+      }
+    },
+    "code-runner": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-code-runner"],
+      "env": {
+        "ALLOWED_COMMANDS": "talosctl,docker,ps,top,htop,systemctl,ssh"
+      }
+    }
+  }
+}

@@ -1,0 +1,121 @@
+# Homelab MCP Configuration
+
+## MCP Servers for Homelab Infrastructure Management
+
+### SSH Server for Node Management
+- Server: ssh
+- Config: 
+  - Hosts: 192.168.1.234-236 (Actual Turing Pi node IPs)
+  - User: talos
+  - Key-based authentication preferred
+
+### Kubernetes Server for Cluster Management
+- Server: kubernetes
+- Config:
+  - Context: turingpi
+  - Namespace: default
+  - Access: cluster-admin
+  - Endpoint: https://192.168.1.234:6443
+
+### Network/Infrastructure Server
+- Server: network
+- Config:
+  - Subnet: 192.168.1.0/24
+  - Gateway: 192.168.1.1
+  - DNS: 192.168.1.254
+  - Actual Node IPs: 192.168.1.234, 235, 236, 225
+
+### Storage Server for Longhorn Management
+- Server: storage
+- Config:
+  - Type: longhorn
+  - Mount points: /var/lib/longhorn
+  - Replica count: 2 (optimized for 4-node cluster)
+  - Status: ✅ Fully deployed and running
+
+## Project Context
+This is a homelab infrastructure project with:
+- 4-node Turing Pi Kubernetes cluster (3 control plane + 1 worker)
+- Talos Linux v1.10.6 as the OS
+- Longhorn v1.8.1 for distributed storage
+- Flux for GitOps deployment
+- Unraid NAS for additional storage
+
+## Current Status: ✅ CLUSTER OPERATIONAL
+- **Talos Cluster**: All 4 nodes healthy and running
+- **Kubernetes**: v1.33.2 cluster fully functional
+- **Longhorn**: Storage system deployed and operational
+- **Flux**: GitOps infrastructure working
+- **Network**: DHCP assigned different IPs than expected (234-236 vs 223-226)
+
+## Important Configuration Details
+
+### SOPS Encryption Setup
+- **Encryption**: Age-based encryption for secrets
+- **Key Location**: `systems/turingpi/talos/age-key.txt` (KEEP SECURE!)
+- **Config File**: `.sops.yaml` in root directory
+- **Encrypted Files**: `talsecret.sops.yaml` contains cluster secrets
+
+### Talos Configuration
+- **Config Location**: `systems/turingpi/talos/talconfig.yaml`
+- **Generated Configs**: `systems/turingpi/talos/clusterconfig/`
+- **Client Config**: `~/.talos/config` (updated with correct IPs)
+- **Deployment Script**: `systems/turingpi/talos/deploy.sh`
+
+### Longhorn Configuration
+- **HelmRelease**: `systems/turingpi/kubernetes/infrastructure/longhorn/helmrelease.yaml`
+- **Replica Count**: 2 (optimal for 4-node cluster)
+- **Node Selector**: Worker nodes only (n4)
+- **Performance**: Optimized for SSD workloads
+
+### Flux GitOps
+- **Source**: GitHub repository (fishpen0/homelab)
+- **Branch**: main
+- **Path**: `systems/turingpi/kubernetes/infrastructure/`
+- **Status**: ✅ Deploying infrastructure automatically
+
+## Troubleshooting Notes
+
+### IP Address Mismatch (RESOLVED)
+- **Expected**: 192.168.1.223-226
+- **Actual**: 192.168.1.234-236 (n1, n2, n3) + 192.168.1.225 (n4)
+- **Solution**: Updated Talos config and kubeconfig with correct IPs
+
+### Cluster Access
+```bash
+# Check cluster status
+kubectl get nodes
+
+# Access Longhorn
+kubectl get pods -n longhorn-system
+
+# Talos operations
+talosctl health -n 192.168.1.234
+talosctl -n 192.168.1.234 get nodes
+```
+
+### Deployment Commands
+```bash
+# Deploy Talos config
+cd systems/turingpi/talos && ./deploy.sh
+
+# Setup Longhorn prerequisites
+./setup-longhorn.sh
+
+# Check Flux status
+flux get kustomizations
+flux get sources
+```
+
+## Security Notes
+- **age-key.txt**: Contains private encryption key - NEVER commit to git
+- **talsecret.sops.yaml**: Contains encrypted cluster secrets
+- **clusterconfig/**: Contains generated machine configs (gitignored)
+- **SOPS Config**: `.sops.yaml` defines encryption rules
+
+## Next Steps
+1. ✅ Cluster is operational
+2. ✅ Longhorn is deployed
+3. 🔄 Deploy applications and workloads
+4. 🔄 Configure storage classes and volumes
+5. 🔄 Set up monitoring and alerting
