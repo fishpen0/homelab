@@ -1,6 +1,6 @@
 clusterName: turingpi
 talosVersion: v1.10.6
-endpoint: https://192.168.1.224:6443
+endpoint: https://192.168.1.234:6443
 allowSchedulingOnControlPlanes: true
 
 controlPlane:
@@ -23,7 +23,7 @@ worker:
 
 nodes:
   - hostname: "n1"
-    ipAddress: 192.168.1.224
+    ipAddress: 192.168.1.234
     installDisk: /dev/nvme0n1
     controlPlane: true
     networkInterfaces:
@@ -40,7 +40,7 @@ nodes:
             - siderolabs/iscsi-tools
             - siderolabs/util-linux-tools
   - hostname: "n2"
-    ipAddress: 192.168.1.226
+    ipAddress: 192.168.1.235
     installDisk: /dev/nvme0n1
     controlPlane: true
     networkInterfaces:
@@ -50,7 +50,7 @@ nodes:
     schematic:
       customization: *customization
   - hostname: "n3"
-    ipAddress: 192.168.1.223
+    ipAddress: 192.168.1.236
     installDisk: /dev/nvme0n1
     controlPlane: true
     networkInterfaces:
@@ -60,7 +60,7 @@ nodes:
     schematic:
       customization: *customization
   - hostname: "n4"
-    ipAddress: 192.168.1.225
+    ipAddress: 192.168.1.233
     installDisk: /dev/nvme0n1
     networkInterfaces:
       - interface: eth0
