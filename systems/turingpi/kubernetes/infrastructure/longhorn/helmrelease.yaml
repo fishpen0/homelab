@@ -31,7 +31,6 @@ spec:
       storageNetwork: ""
       v2DataEngine: true
       # Monitoring
-      createDefaultDiskLabeledNodes: true
       defaultDataPath: /var/lib/longhorn
     persistence:
       defaultClassReplicaCount: 2
