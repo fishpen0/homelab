@@ -4,7 +4,6 @@ metadata:
   name: lgtm-ingress
   namespace: lgtm
   annotations:
-    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /$2
@@ -16,6 +15,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
     nginx.ingress.kubernetes.io/proxy-max-temp-file-size: "1024m"
 spec:
+  ingressClassName: nginx
   rules:
     - host: grafana.turingpi.local
       http:
@@ -64,7 +64,6 @@ metadata:
   name: lgtm-dashboard
   namespace: lgtm
   annotations:
-    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
@@ -75,6 +74,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
     nginx.ingress.kubernetes.io/proxy-max-temp-file-size: "1024m"
 spec:
+  ingressClassName: nginx
   rules:
     - host: lgtm.turingpi.local
       http:
