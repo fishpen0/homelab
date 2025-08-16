@@ -36,15 +36,15 @@ spec:
           echo 1 > /sys/devices/platform/pwm-fan/hwmon/hwmon1/pwm1_enable 2>/dev/null || true
           
           # Temperature thresholds (in millidegrees Celsius)
-          TEMP_LOW=45000    # 45°C - start fans
-          TEMP_HIGH=65000   # 65°C - max fans
-          TEMP_CRITICAL=80000 # 80°C - emergency cooling
+          TEMP_LOW=40000    # 40°C - start fans (more conservative)
+          TEMP_HIGH=60000   # 60°C - max fans (lower threshold)
+          TEMP_CRITICAL=75000 # 75°C - emergency cooling (more conservative)
           
           # Fan speed mapping
           FAN_OFF=0
-          FAN_LOW=80        # 30% speed for low temp
-          FAN_MED=150       # 60% speed for medium temp
-          FAN_HIGH=200      # 80% speed for high temp
+          FAN_LOW=60        # 25% speed for low temp
+          FAN_MED=120       # 50% speed for medium temp
+          FAN_HIGH=180      # 70% speed for high temp
           FAN_MAX=255       # 100% speed for critical temp
           
           echo "Smart fan control initialized - temperature thresholds: ${TEMP_LOW}°C (start), ${TEMP_HIGH}°C (max), ${TEMP_CRITICAL}°C (emergency)"
@@ -88,8 +88,8 @@ spec:
               echo "Temp: ${current_temp}°C -> Fan: ${target_speed}/255"
             fi
             
-            # Check every 10 seconds for temperature changes
-            sleep 10
+            # Check every 5 seconds for temperature changes (faster response)
+            sleep 5
           done
         securityContext:
           privileged: true
