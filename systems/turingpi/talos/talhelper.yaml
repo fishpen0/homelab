@@ -1,0 +1,80 @@
+# Talhelper Configuration for Turing Pi Cluster
+# This file configures talhelper to generate Talos machine configurations
+
+# Cluster configuration
+clusterName: turingpi
+talosVersion: v1.10.6
+endpoint: https://192.168.1.234:6443
+allowSchedulingOnControlPlanes: true
+
+# Control plane configuration
+controlPlane:
+  patches:
+    - &baselonghorn |-
+      machine:
+        kubelet:
+          extraMounts:
+            - destination: /var/lib/longhorn
+              type: bind
+              source: /var/lib/longhorn
+              options:
+                - bind
+                - rshared
+                - rw
+
+# Worker node configuration
+worker:
+  patches:
+    - *baselonghorn
+
+# Node definitions
+nodes:
+  - hostname: "n1"
+    ipAddress: 192.168.1.234
+    installDisk: /dev/nvme0n1
+    controlPlane: true
+    networkInterfaces:
+      - interface: eth0
+        dhcp: true
+        routes: &routes
+          - network: 0.0.0.0/0
+            gateway: 192.168.1.1
+    schematic:
+      customization: &customization
+        systemExtensions:
+          officialExtensions:
+            - siderolabs/i915
+            - siderolabs/iscsi-tools
+            - siderolabs/util-linux-tools
+
+  - hostname: "n2"
+    ipAddress: 192.168.1.235
+    installDisk: /dev/nvme0n1
+    controlPlane: true
+    networkInterfaces:
+      - interface: eth0
+        dhcp: true
+        routes: *routes
+    schematic:
+      customization: *customization
+
+  - hostname: "n3"
+    ipAddress: 192.168.1.236
+    installDisk: /dev/nvme0n1
+    controlPlane: true
+    networkInterfaces:
+      - interface: eth0
+        dhcp: true
+        routes: *routes
+    schematic:
+      customization: *customization
+
+  - hostname: "n4"
+    ipAddress: 192.168.1.233
+    installDisk: /dev/nvme0n1
+    networkInterfaces:
+      - interface: eth0
+        dhcp: true
+        routes: *routes
+    schematic:
+      customization: *customization

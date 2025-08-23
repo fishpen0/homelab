@@ -62,6 +62,17 @@ This is a homelab infrastructure project with:
 - **Client Config**: `~/.talos/config` (updated with correct IPs)
 - **Deployment Script**: `systems/turingpi/talos/deploy.sh`
 
+### TalHelper (Talos config generator)
+- **Tool**: `talhelper` is used to generate Talos machine configs
+- **Config Source**: `systems/turingpi/talos/talhelper.yaml`
+- **Output Directory**: `systems/turingpi/talos/clusterconfig/` (gitignored)
+- **Usage**: Regenerate configs after changes to nodes or settings
+- **Example**:
+```bash
+cd systems/turingpi/talos
+talhelper genconfig
+```
+
 ### Longhorn Configuration
 - **HelmRelease**: `systems/turingpi/kubernetes/infrastructure/longhorn/helmrelease.yaml`
 - **Replica Count**: 2 (optimal for 4-node cluster)
