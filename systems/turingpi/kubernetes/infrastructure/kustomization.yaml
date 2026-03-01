@@ -2,9 +2,3 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - longhorn
-  - ingress
-  - lgtm
-# Add more infrastructure components as needed
-# Add infrastructure components here, like:
-# - metrics-server
-# - cert-manager
