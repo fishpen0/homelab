@@ -44,6 +44,13 @@ homelab/
 
 ## Common Operations
 
+### Interact with the turing pi BMC
+```bash
+tpi -h
+tpi info
+tpi power status
+```
+
 ### Check cluster/Flux status
 ```bash
 kubectl get nodes
