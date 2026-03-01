@@ -1,6 +1,9 @@
 # homelab
+My homelab
 
 ## Kubernetes
+Running on a TuringPi with four RK1 nodes.
+
       :oc     .,,'     cll           Distro: Talos
       .;;l    .;;,    :;;.           Version: v1.32.3
        ,;c.   .;;,    l;,            Node Count: 4
