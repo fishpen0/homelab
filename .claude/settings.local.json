@@ -18,7 +18,8 @@
       "Bash(sort -k8)",
       "Bash(talosctl -n 192.168.1.236 read /sys/class/thermal/thermal_zone0/temp)",
       "Bash(talosctl -n 192.168.1.234 read /sys/class/thermal/thermal_zone0/temp)",
-      "Bash(talosctl -n 192.168.1.235 read /sys/class/thermal/thermal_zone0/temp)"
+      "Bash(talosctl -n 192.168.1.235 read /sys/class/thermal/thermal_zone0/temp)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

@@ -153,6 +153,54 @@ done
 ## Adding New Infrastructure
 
 1. Create a directory under `systems/turingpi/kubernetes/infrastructure/<name>/`
-2. Add a `namespace.yaml`, `helmrelease.yaml`, and `kustomization.yaml`
+2. Add a `namespace.yaml`, `helmrepository.yaml`, `helmrelease.yaml`, and `kustomization.yaml`
 3. Reference the new directory in `systems/turingpi/kubernetes/infrastructure/kustomization.yaml`
 4. Commit to `main` — Flux reconciles automatically
+
+**Pattern notes:**
+- `HelmRepository` always goes in `namespace: flux-system`
+- `HelmRelease` goes in the component's own namespace
+- `install.createNamespace: true` is standard on all HelmReleases
+
+## talhelper genconfig — SOPS Key Required
+
+`talhelper genconfig` will fail with a SOPS decryption error unless the age key is explicitly provided:
+
+```bash
+cd systems/turingpi/talos
+SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig
+```
+
+The age key is at `systems/turingpi/talos/age-key.txt` (gitignored). Without `SOPS_AGE_KEY_FILE` set, the command silently finds no valid decryption key and exits with error.
+
+## TLS Architecture Notes
+
+### metrics-server TLS (two separate connections)
+
+1. **API server → metrics-server** (aggregated API): Secured via cert-manager. The `selfsigned-cluster-issuer` ClusterIssuer issues a cert for the metrics-server service; cert-manager's cainjector injects the CA bundle into the `APIService` resource so the API server trusts it. Configured in the metrics-server HelmRelease `values.tls` block.
+
+2. **metrics-server → kubelet** (scraping node stats): Secured via kubelet TLS bootstrap + `kubelet-csr-approver`. Enabled by `serverTLSBootstrap: true` in `talconfig.yaml` (under `machine.kubelet.extraConfig`). Kubelets submit `CertificateSigningRequest` objects; `kubelet-csr-approver` auto-approves them. This replaces `--kubelet-insecure-tls`.
+
+**cert-manager cannot fix connection #2** — kubelet serving CSRs are issued by the kubelet process on each node, not by in-cluster workloads. Both components are needed for full hardening.
+
+### Applying Talos config changes safely
+
+After editing `talconfig.yaml`, regenerate and apply **before** pushing Kubernetes changes that depend on the new config (e.g. removing `--kubelet-insecure-tls`):
+
+```bash
+cd systems/turingpi/talos
+SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig
+talosctl apply-config -n 192.168.1.234 -f clusterconfig/turingpi-n1.yaml
+talosctl apply-config -n 192.168.1.235 -f clusterconfig/turingpi-n2.yaml
+talosctl apply-config -n 192.168.1.236 -f clusterconfig/turingpi-n3.yaml
+talosctl apply-config -n 192.168.1.233 -f clusterconfig/turingpi-n4.yaml
+```
+
+Verify kubelet CSRs appear after applying:
+```bash
+kubectl get csr   # expect 4 Pending with signerName: kubernetes.io/kubelet-serving
+```
+
+### kubelet patch merging in talconfig.yaml
+
+When adding new `machine.kubelet` config, merge it into the existing `baselonghorn` patch anchor (which already touches `machine.kubelet.extraMounts`). Do not create a separate patch for the same top-level key — Talos merges patch keys, but having two patches that both set `machine.kubelet` can cause unexpected behavior depending on merge strategy.
