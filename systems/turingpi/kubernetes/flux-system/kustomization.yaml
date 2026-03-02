@@ -9,3 +9,4 @@ resources:
   - monitoring.yaml
   - loki.yaml
   - alloy.yaml
+  - monitoring-ingress.yaml
