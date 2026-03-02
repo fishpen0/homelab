@@ -14,3 +14,10 @@ Steps:
 2. If S3: deploy MinIO on NAS, create a bucket + access credentials
 3. Configure Longhorn `backupTarget` and `backupTargetCredentialSecret` in the HelmRelease
 4. Set a recurring backup schedule (RecurringJob) — e.g. daily snapshot + weekly backup
+
+## Observability Stack
+- [ ] Add Grafana (dashboards)
+- [ ] Add Prometheus (metrics collection)
+- [ ] Add Loki (log aggregation)
+- [ ] Add Tempo (distributed tracing)
+- [ ] Cry about the cluster being too small to justify mimir or thanos
