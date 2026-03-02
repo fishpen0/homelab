@@ -18,5 +18,12 @@ spec:
     createNamespace: true
   values:
     args:
-      - --kubelet-insecure-tls
       - --kubelet-preferred-address-types=InternalIP
+    tls:
+      type: cert-manager
+      certManager:
+        addInjectorAnnotations: true
+        existingIssuer:
+          enabled: true
+          name: selfsigned-cluster-issuer
+          kind: ClusterIssuer

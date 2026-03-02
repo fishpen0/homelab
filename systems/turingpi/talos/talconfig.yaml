@@ -17,6 +17,8 @@ controlPlane:
                 - bind
                 - rshared
                 - rw
+          extraConfig:
+            serverTLSBootstrap: true
     - &basenetwork |-
       machine:
         network:
