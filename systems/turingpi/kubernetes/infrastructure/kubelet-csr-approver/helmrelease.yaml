@@ -20,3 +20,6 @@ spec:
     providerRegex: "^(n1|n2|n3|n4)$"
     providerIpPrefixes:
       - "192.168.1.0/24"
+      - "2600:1700:89c2:c200::/64"
+      - "fdd7:ad7c:fa:4181::/64"
+      - "fe80::/10"
