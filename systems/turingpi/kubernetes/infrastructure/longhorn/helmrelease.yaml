@@ -29,6 +29,7 @@ spec:
       concurrentBackupRestorePerNodeLimit: 5
       # Storage settings
       storageNetwork: ""
+      storageReservedPercentageForDefaultDisk: 5
       v2DataEngine: true
       # Monitoring
       defaultDataPath: /var/lib/longhorn
