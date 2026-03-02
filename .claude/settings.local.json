@@ -7,7 +7,18 @@
       "WebFetch(domain:budimanjojo.github.io)",
       "Bash(SOPS_AGE_KEY_FILE=./age-key.txt talhelper genconfig --dry-run)",
       "Bash(SOPS_AGE_KEY_FILE=./age-key.txt talhelper genconfig)",
-      "Bash(kubectl get nodes)"
+      "Bash(kubectl get nodes)",
+      "Bash(kubectl get node n4 -o jsonpath='{.spec.taints}')",
+      "Bash(kubectl describe node n4)",
+      "Bash(kubectl get nodes -o wide)",
+      "Bash(kubectl top nodes)",
+      "Bash(kubectl get pods -A -o wide --field-selector spec.nodeName=n3)",
+      "Bash(talosctl -n 192.168.1.236 stats)",
+      "Bash(kubectl get pods -A -o wide)",
+      "Bash(sort -k8)",
+      "Bash(talosctl -n 192.168.1.236 read /sys/class/thermal/thermal_zone0/temp)",
+      "Bash(talosctl -n 192.168.1.234 read /sys/class/thermal/thermal_zone0/temp)",
+      "Bash(talosctl -n 192.168.1.235 read /sys/class/thermal/thermal_zone0/temp)"
     ]
   }
 }

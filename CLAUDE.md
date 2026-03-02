@@ -47,7 +47,6 @@ GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. 
 - **Node IPs**: n1=192.168.1.234, n2=192.168.1.235, n3=192.168.1.236, n4=192.168.1.233
 - **CNI**: Flannel
 - **Storage**: Longhorn (distributed block storage, replicas=2, worker nodes only)
-- **Ingress**: NGINX Ingress Controller (LoadBalancer), local domain `*.turingpi.local`
 - **GitOps**: Flux v2 watches `systems/turingpi/kubernetes/`
 
 ## Repository Structure
@@ -60,8 +59,6 @@ homelab/
 │       ├── flux-system/        # Flux bootstrap manifests
 │       └── infrastructure/     # All deployed infrastructure
 │           ├── longhorn/       # Distributed storage
-│           ├── ingress/        # NGINX controller + ingress rules per service
-│           ├── lgtm/           # Observability: Loki, Grafana, Tempo, Mimir
 │           └── tailscale/      # VPN operator for remote access
 └── tofu/                       # OpenTofu (Terraform) — currently manages Flux bootstrap
 ```
@@ -70,9 +67,8 @@ homelab/
 
 - **All apps deploy via HelmRelease** — no raw Deployments. Add new apps as a HelmRelease + Kustomization under `infrastructure/`.
 - **Kustomize overlays** wire everything together. Every directory has a `kustomization.yaml` that must include new resources explicitly.
-- **Ingress rules live separately** from app manifests in `infrastructure/ingress/rules/<service>/`. Add a new ingress rule there and reference it in `infrastructure/ingress/kustomization.yaml`.
 - **Secrets use SOPS + age** encryption. The age key is at `systems/turingpi/talos/age-key.txt` (gitignored). Encrypted files end in `.sops.yaml`.
-- **Longhorn PVCs** use the `longhorn` storage class. Resource allocations for LGTM: Loki=10Gi, Grafana=5Gi, Tempo=5Gi, Mimir=20Gi.
+- **Longhorn PVCs** use the `longhorn` storage class.
 
 ## Common Operations
 
@@ -121,16 +117,6 @@ cd systems/turingpi/talos
 talhelper genconfig
 ```
 
-### Access LGTM services
-```bash
-kubectl port-forward -n lgtm svc/grafana 3000:80     # Grafana (admin/admin)
-kubectl port-forward -n lgtm svc/loki 3100:3100
-kubectl port-forward -n lgtm svc/tempo 3200:3200
-kubectl port-forward -n lgtm svc/mimir 9009:9009
-```
-
-Or via ingress after DNS setup: `http://grafana.turingpi.local`
-
 ### OpenTofu
 ```bash
 cd tofu
@@ -139,10 +125,34 @@ tofu plan
 tofu apply
 ```
 
+### Fan & Thermal Monitoring
+
+```bash
+# Temps across all nodes (millidegrees C — divide by 1000)
+for node in 192.168.1.234 192.168.1.235 192.168.1.236 192.168.1.233; do
+  echo -n "$node temp: " && talosctl --nodes $node read /sys/class/thermal/thermal_zone0/temp
+done
+
+# Fan speed (pwm-fan, 0–5 scale) across all nodes
+for node in 192.168.1.234 192.168.1.235 192.168.1.236 192.168.1.233; do
+  echo -n "$node fan state: " && talosctl --nodes $node read /sys/class/thermal/cooling_device0/cur_state
+done
+
+# Load averages
+for node in 192.168.1.234 192.168.1.235 192.168.1.236 192.168.1.233; do
+  echo -n "$node load: " && talosctl --nodes $node read /proc/loadavg
+done
+```
+
+**Reference values (idle/light load):**
+- Temps: ~45–48°C is normal
+- Fan states: 1–2/5 is normal; 3+ warrants attention
+- n4 runs cooler/quieter (worker only, light Flux + CoreDNS workload)
+- Fan audibility differences are often physical resonance, not a thermal issue
+
 ## Adding New Infrastructure
 
 1. Create a directory under `systems/turingpi/kubernetes/infrastructure/<name>/`
 2. Add a `namespace.yaml`, `helmrelease.yaml`, and `kustomization.yaml`
 3. Reference the new directory in `systems/turingpi/kubernetes/infrastructure/kustomization.yaml`
-4. If the service needs ingress, add rules in `infrastructure/ingress/rules/<name>/` and update `infrastructure/ingress/kustomization.yaml`
-5. Commit to `main` — Flux reconciles automatically
+4. Commit to `main` — Flux reconciles automatically
