@@ -1,3 +1,5 @@
 creation_rules:
   - path_regex: systems/turingpi/talos/.*\.sops\.yaml$
     age: age1derzdv0akpyremxj0v5cvacng7sephxpcvpkmetqx8qjjpc4f4fqcxh5y5
+  - path_regex: systems/turingpi/kubernetes/.*\.sops\.yaml$
+    age: age1derzdv0akpyremxj0v5cvacng7sephxpcvpkmetqx8qjjpc4f4fqcxh5y5

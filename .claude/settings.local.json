@@ -19,7 +19,24 @@
       "Bash(talosctl -n 192.168.1.236 read /sys/class/thermal/thermal_zone0/temp)",
       "Bash(talosctl -n 192.168.1.234 read /sys/class/thermal/thermal_zone0/temp)",
       "Bash(talosctl -n 192.168.1.235 read /sys/class/thermal/thermal_zone0/temp)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(flux get helmreleases -A)",
+      "Bash(kubectl get pods -n metrics-server)",
+      "Bash(kubectl describe pod -n metrics-server -l app.kubernetes.io/name=metrics-server)",
+      "Bash(kubectl logs -n metrics-server -l app.kubernetes.io/name=metrics-server --tail=50)",
+      "Bash(kubectl get all -n kubelet-csr-approver)",
+      "Bash(flux get kustomizations -n flux-system)",
+      "Bash(kubectl get pods -n cert-manager)",
+      "Bash(kubectl get crds)",
+      "Bash(kubectl get csr)",
+      "Bash(kubectl get helmreleases -A)",
+      "Bash(helm search hub lgtm --max-col-width 80)",
+      "Bash(helm repo list)",
+      "WebFetch(domain:grafana.github.io)",
+      "WebFetch(domain:prometheus-community.github.io)",
+      "Bash(kubectl get ns tailscale)",
+      "Bash(kubectl get helmrelease -n tailscale)",
+      "Bash(kubectl get helmrepository -A)"
     ]
   }
 }
