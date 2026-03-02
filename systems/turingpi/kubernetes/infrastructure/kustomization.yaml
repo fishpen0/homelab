@@ -5,3 +5,4 @@ resources:
   - longhorn-ingress
   - kubelet-csr-approver
   - metrics-server
+  - monitoring-ingress

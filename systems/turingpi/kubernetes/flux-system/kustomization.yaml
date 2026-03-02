@@ -6,3 +6,6 @@ resources:
   - cert-manager.yaml
   - cert-manager-config.yaml
   - tailscale.yaml
+  - monitoring.yaml
+  - loki.yaml
+  - alloy.yaml
