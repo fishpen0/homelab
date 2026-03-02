@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.siderolabs.com)",
+      "Bash(talhelper --version)",
+      "Bash(talhelper validate talconfig)",
+      "WebFetch(domain:budimanjojo.github.io)",
+      "Bash(SOPS_AGE_KEY_FILE=./age-key.txt talhelper genconfig --dry-run)",
+      "Bash(SOPS_AGE_KEY_FILE=./age-key.txt talhelper genconfig)"
+    ]
+  }
+}

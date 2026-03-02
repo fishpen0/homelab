@@ -2,6 +2,38 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Model Selection
+
+At session start:
+1. Announce which model is running.
+2. State what task this session will handle.
+3. Assess the right model tier:
+   - **Opus**: Complex cross-referencing, multi-source synthesis, architect sessions, first-time builds with design decisions.
+   - **Sonnet**: Routine work, editing existing code, file reorganization, most day-to-day tasks.
+   - **Haiku**: Simple reads, file copies, formatting, search/lookup, subagent research.
+4. If current model is more expensive than needed, immediately ask: "This task would run fine on [model] — want to switch down?"
+5. If current model is less capable than needed, immediately ask: "This task really needs Opus — want to switch up?" Wait for answer before proceeding in either case.
+
+## Cost & Context Hygiene
+
+**Before every task**, evaluate cheapest and fastest execution:
+1. Can this run on a cheaper model?
+2. Can independent tasks run in parallel sessions?
+3. Is the context carrying dead weight from finished work?
+4. Am I about to run an expensive autonomous loop without checkpoints?
+
+**Proactive context switch alerts.** Flag when:
+- A distinct task is finished and the next one is independent
+- Context is past ~40-50% and remaining work doesn't need the history
+- Cheap work is being taxed by earlier complex context
+
+Do NOT flag when mid-architect or mid-sync where accumulated context IS the value. Surface the tradeoff. Let the user decide.
+
+**Cost logging.** At the end of each session:
+- Ask the user to run `/cost` for the session total
+- Append an entry to: ~/pm-automation/.state/cost-log.yaml
+- Fields: date, task, type, cost, duration_api, duration_wall, code_changes, models (per-model breakdown), notes
+
 ## What This Repo Is
 
 GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. Infrastructure is declared as code and automatically reconciled by Flux CD. Changes to `main` are picked up within 1 minute and reconciled within 10 minutes.
