@@ -1,9 +1,10 @@
 clusterName: turingpi
-talosVersion: v1.10.6
+talosVersion: v1.12.0
 endpoint: https://192.168.1.234:6443
 allowSchedulingOnControlPlanes: true
 
 controlPlane:
+  talosImageURL: factory.talos.dev/installer/85f683902139269fbc5a7f64ea94a694d31e0b3d94347a225223fcbd042083ae
   patches:
     - &baselonghorn |-
       machine:
@@ -16,55 +17,50 @@ controlPlane:
                 - bind
                 - rshared
                 - rw
+    - &basenetwork |-
+      machine:
+        network:
+          interfaces:
+            - interface: eth0
+              dhcp: true
+              routes:
+                - network: 0.0.0.0/0
+                  gateway: 192.168.1.1
 
 worker:
+  talosImageURL: factory.talos.dev/installer/85f683902139269fbc5a7f64ea94a694d31e0b3d94347a225223fcbd042083ae
   patches:
     - *baselonghorn
+    - *basenetwork
 
 nodes:
   - hostname: "n1"
     ipAddress: 192.168.1.234
     installDisk: /dev/nvme0n1
     controlPlane: true
-    networkInterfaces:
-      - interface: eth0
-        dhcp: true
-        routes: &routes
-          - network: 0.0.0.0/0
-            gateway: 192.168.1.1
-    schematic:
-      customization: &customization
+    schematic: &schematic
+      overlay:
+        image: siderolabs/sbc-rockchip
+        name: turingrk1
+      customization:
         systemExtensions:
           officialExtensions:
-            - siderolabs/i915
             - siderolabs/iscsi-tools
             - siderolabs/util-linux-tools
+
   - hostname: "n2"
     ipAddress: 192.168.1.235
     installDisk: /dev/nvme0n1
     controlPlane: true
-    networkInterfaces:
-      - interface: eth0
-        dhcp: true
-        routes: *routes
-    schematic:
-      customization: *customization
+    schematic: *schematic
+
   - hostname: "n3"
     ipAddress: 192.168.1.236
     installDisk: /dev/nvme0n1
     controlPlane: true
-    networkInterfaces:
-      - interface: eth0
-        dhcp: true
-        routes: *routes
-    schematic:
-      customization: *customization
+    schematic: *schematic
+
   - hostname: "n4"
     ipAddress: 192.168.1.233
     installDisk: /dev/nvme0n1
-    networkInterfaces:
-      - interface: eth0
-        dhcp: true
-        routes: *routes
-    schematic:
-      customization: *customization
+    schematic: *schematic
