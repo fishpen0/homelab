@@ -17,6 +17,10 @@ controlPlane:
                 - bind
                 - rshared
                 - rw
+          nodeIP:
+            validSubnets:
+              - "192.168.1.0/24"
+              - "fdd7:ad7c:fa:4181::/64"
           extraConfig:
             serverTLSBootstrap: true
     - &basenetwork |-
