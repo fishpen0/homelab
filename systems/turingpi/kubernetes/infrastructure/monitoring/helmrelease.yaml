@@ -20,6 +20,9 @@ spec:
     fullnameOverride: "kps"
 
     prometheus:
+      service:
+        annotations:
+          tailscale.com/expose: "true"
       prometheusSpec:
         retention: 15d
         retentionSize: 18GB
