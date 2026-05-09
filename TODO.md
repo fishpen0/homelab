@@ -2,6 +2,7 @@
 
 See [TODO/](TODO/) for individual items:
 
+- [Authentik](TODO/authentik.md)
 - [Longhorn Backups](TODO/longhorn-backups.md)
 - [Garage S3 (Unraid)](TODO/garage-s3.md)
 - [BMC Fan Controller](TODO/bmc-fan-controller.md)

@@ -47,27 +47,27 @@ GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. 
 - **Node IPs**: n1=192.168.1.234, n2=192.168.1.235, n3=192.168.1.236, n4=192.168.1.233
 - **CNI**: Flannel
 - **Storage**: Longhorn (distributed block storage, replicas=2, worker nodes only)
-- **GitOps**: Flux v2 watches `systems/turingpi/kubernetes/`
+- **GitOps**: Flux v2 watches `kubernetes/`
 
 ## Repository Structure
 
 ```
 homelab/
-├── systems/turingpi/
-│   ├── talos/                  # Talos cluster config (talconfig.yaml, SOPS secrets)
-│   └── kubernetes/
-│       ├── flux-system/        # Flux bootstrap manifests
-│       └── infrastructure/     # All deployed infrastructure
-│           ├── longhorn/       # Distributed storage
-│           └── tailscale/      # VPN operator for remote access
-└── tofu/                       # OpenTofu (Terraform) — currently manages Flux bootstrap
+├── kubernetes/                 # Kubernetes manifests
+│   ├── flux-system/            # Flux bootstrap manifests
+│   └── infrastructure/         # All deployed infrastructure
+│       ├── longhorn/           # Distributed storage
+│       └── tailscale/          # VPN operator for remote access
+├── talos/                      # Talos cluster config (talconfig.yaml, SOPS secrets)
+├── tofu/                       # OpenTofu (Terraform) — currently manages Flux bootstrap
+└── TODO/                       # Work tracking
 ```
 
 ## Key Conventions
 
 - **All apps deploy via HelmRelease** — no raw Deployments. Add new apps as a HelmRelease + Kustomization under `infrastructure/`.
 - **Kustomize overlays** wire everything together. Every directory has a `kustomization.yaml` that must include new resources explicitly.
-- **Secrets use SOPS + age** encryption. The age key is at `systems/turingpi/talos/age-key.txt` (gitignored). Encrypted files end in `.sops.yaml`.
+- **Secrets use SOPS + age** encryption. The age key is at `talos/age-key.txt` (gitignored). Encrypted files end in `.sops.yaml`.
 - **Longhorn PVCs** use the `longhorn` storage class.
 
 ## Common Operations
@@ -93,7 +93,7 @@ flux reconcile kustomization flux-system --with-source
 
 ### Apply a kustomization manually
 ```bash
-kubectl apply -k systems/turingpi/kubernetes/infrastructure/<component>/
+kubectl apply -k kubernetes/infrastructure/<component>/
 ```
 
 ### Talos cluster management
@@ -113,7 +113,7 @@ talosctl kubeconfig -n 192.168.1.234
 
 ### Regenerate Talos node configs (after editing talconfig.yaml)
 ```bash
-cd systems/turingpi/talos
+cd talos
 talhelper genconfig
 ```
 
@@ -152,9 +152,9 @@ done
 
 ## Adding New Infrastructure
 
-1. Create a directory under `systems/turingpi/kubernetes/infrastructure/<name>/`
+1. Create a directory under `kubernetes/infrastructure/<name>/`
 2. Add a `namespace.yaml`, `helmrepository.yaml`, `helmrelease.yaml`, and `kustomization.yaml`
-3. Reference the new directory in `systems/turingpi/kubernetes/infrastructure/kustomization.yaml`
+3. Reference the new directory in `kubernetes/infrastructure/kustomization.yaml`
 4. Commit to `main` — Flux reconciles automatically
 
 **Pattern notes:**
@@ -167,11 +167,11 @@ done
 `talhelper genconfig` will fail with a SOPS decryption error unless the age key is explicitly provided:
 
 ```bash
-cd systems/turingpi/talos
+cd talos
 SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig
 ```
 
-The age key is at `systems/turingpi/talos/age-key.txt` (gitignored). Without `SOPS_AGE_KEY_FILE` set, the command silently finds no valid decryption key and exits with error.
+The age key is at `talos/age-key.txt` (gitignored). Without `SOPS_AGE_KEY_FILE` set, the command silently finds no valid decryption key and exits with error.
 
 ## TLS Architecture Notes
 
@@ -188,7 +188,7 @@ The age key is at `systems/turingpi/talos/age-key.txt` (gitignored). Without `SO
 After editing `talconfig.yaml`, regenerate and apply **before** pushing Kubernetes changes that depend on the new config (e.g. removing `--kubelet-insecure-tls`):
 
 ```bash
-cd systems/turingpi/talos
+cd talos
 SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig
 talosctl apply-config -n 192.168.1.234 -f clusterconfig/turingpi-n1.yaml
 talosctl apply-config -n 192.168.1.235 -f clusterconfig/turingpi-n2.yaml
