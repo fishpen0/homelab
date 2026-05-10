@@ -3,10 +3,3 @@ kind: Kustomization
 resources:
   - gotk-components.yaml
   - gotk-sync.yaml
-  - cert-manager.yaml
-  - cert-manager-config.yaml
-  - tailscale.yaml
-  - monitoring.yaml
-  - loki.yaml
-  - alloy.yaml
-  - monitoring-ingress.yaml
