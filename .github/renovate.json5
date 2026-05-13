@@ -70,7 +70,7 @@
       automerge: false,
       addLabels: ["renovate/talos", "needs-review"],
       prBodyNotes: [
-        "⚠️ **Manual steps required after merging:**",
+        "**Manual steps required after merging:**",
         "```bash",
         "cd talos",
         "SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig",
