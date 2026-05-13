@@ -8,7 +8,7 @@
     ":timezone(America/Los_Angeles)",
   ],
 
-  // Run Saturday early morning — minimal disruption, Flux has all weekend to reconcile
+  // Run Saturday
   schedule: ["* 0-6 * * 6"],
   prConcurrentLimit: 5,
   prHourlyLimit: 2,
@@ -50,10 +50,6 @@
 
   // --- Package Rules ---
   packageRules: [
-    // -------------------------------------------------------
-    // Automerge: digest bumps and patches are low-risk
-    // Use branch automerge (no PR) for true silence
-    // -------------------------------------------------------
     {
       description: "Automerge digest and patch updates",
       matchUpdateTypes: ["digest", "patch"],
@@ -61,11 +57,6 @@
       automergeType: "branch",
       minimumReleaseAge: "3 days", // guard against yanked releases
     },
-
-    // -------------------------------------------------------
-    // Longhorn: storage — never automerge, require manual review
-    // A bad Longhorn upgrade can corrupt PVCs
-    // -------------------------------------------------------
     {
       description: "Longhorn: manual review required",
       matchPackageNames: ["longhorn"],
@@ -73,11 +64,6 @@
       minimumReleaseAge: "7 days",
       addLabels: ["renovate/longhorn", "needs-review"],
     },
-
-    // -------------------------------------------------------
-    // Talos: manual apply required (talosctl apply-config per node)
-    // Renovate raises the PR as a reminder; human applies it
-    // -------------------------------------------------------
     {
       description: "Talos: manual cluster apply required",
       matchPackageNames: ["siderolabs/talos"],
@@ -95,11 +81,6 @@
         "```",
       ],
     },
-
-    // -------------------------------------------------------
-    // Monitoring stack: group Loki + Alloy + kube-prometheus-stack
-    // to keep dashboards/rules/alerts in sync
-    // -------------------------------------------------------
     {
       description: "Group monitoring stack updates",
       matchPackageNames: ["kube-prometheus-stack", "loki", "alloy"],
@@ -107,28 +88,16 @@
       automerge: false,
       addLabels: ["renovate/monitoring"],
     },
-
-    // -------------------------------------------------------
-    // cert-manager: group chart + any image updates together
-    // -------------------------------------------------------
     {
       description: "Group cert-manager updates",
       matchPackageNames: ["/cert-manager/"],
       groupName: "cert-manager",
     },
-
-    // -------------------------------------------------------
-    // Flux system: group all Flux components
-    // -------------------------------------------------------
     {
       description: "Group Flux updates",
       matchPackageNames: ["/fluxcd/", "/^ghcr\\.io\\/fluxcd\\//"],
       groupName: "flux",
     },
-
-    // -------------------------------------------------------
-    // Major versions: always require human review
-    // -------------------------------------------------------
     {
       description: "Flag all major version bumps for manual review",
       matchUpdateTypes: ["major"],
