@@ -1,0 +1,139 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  extends: [
+    "config:best-practices", // stricter defaults than config:recommended
+    ":dependencyDashboard", // single issue as master update tracker
+    ":semanticCommits", // chore(deps): ... commit messages
+    ":timezone(America/Los_Angeles)",
+  ],
+
+  // Run Saturday early morning — minimal disruption, Flux has all weekend to reconcile
+  schedule: ["* 0-6 * * 6"],
+  prConcurrentLimit: 5,
+  prHourlyLimit: 2,
+
+  // Security advisories always get a PR, regardless of schedule
+  vulnerabilityAlerts: {
+    schedule: ["at any time"],
+    labels: ["security"],
+  },
+
+  // --- Managers ---
+  // Flux manager auto-detects HelmRelease, HelmRepository, OCIRepository, Kustomization
+  flux: {
+    managerFilePatterns: ["/kubernetes/.+\\.ya?ml$/"],
+  },
+  // helm-values handles image: { repository, tag } blocks inside HelmRelease values:
+  "helm-values": {
+    managerFilePatterns: ["/kubernetes/.+\\.ya?ml$/"],
+  },
+  // kubernetes manager catches bare image: references in YAML
+  kubernetes: {
+    managerFilePatterns: ["/kubernetes/.+\\.ya?ml$/"],
+  },
+
+  // --- Custom Managers ---
+  customManagers: [
+    // Track Talos version in talconfig.yaml
+    {
+      customType: "regex",
+      managerFilePatterns: ["/talos/talconfig\\.yaml$/"],
+      matchStrings: [
+        "talosVersion:\\s*[\"']?(?<currentValue>v?\\d+\\.\\d+\\.\\d+)[\"']?",
+      ],
+      datasourceTemplate: "github-releases",
+      depNameTemplate: "siderolabs/talos",
+      versioningTemplate: "semver",
+    },
+  ],
+
+  // --- Package Rules ---
+  packageRules: [
+    // -------------------------------------------------------
+    // Automerge: digest bumps and patches are low-risk
+    // Use branch automerge (no PR) for true silence
+    // -------------------------------------------------------
+    {
+      description: "Automerge digest and patch updates",
+      matchUpdateTypes: ["digest", "patch"],
+      automerge: true,
+      automergeType: "branch",
+      minimumReleaseAge: "3 days", // guard against yanked releases
+    },
+
+    // -------------------------------------------------------
+    // Longhorn: storage — never automerge, require manual review
+    // A bad Longhorn upgrade can corrupt PVCs
+    // -------------------------------------------------------
+    {
+      description: "Longhorn: manual review required",
+      matchPackageNames: ["longhorn"],
+      automerge: false,
+      minimumReleaseAge: "7 days",
+      addLabels: ["renovate/longhorn", "needs-review"],
+    },
+
+    // -------------------------------------------------------
+    // Talos: manual apply required (talosctl apply-config per node)
+    // Renovate raises the PR as a reminder; human applies it
+    // -------------------------------------------------------
+    {
+      description: "Talos: manual cluster apply required",
+      matchPackageNames: ["siderolabs/talos"],
+      automerge: false,
+      addLabels: ["renovate/talos", "needs-review"],
+      prBodyNotes: [
+        "⚠️ **Manual steps required after merging:**",
+        "```bash",
+        "cd talos",
+        "SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig",
+        "talosctl apply-config -n 192.168.1.234 -f clusterconfig/turingpi-n1.yaml",
+        "talosctl apply-config -n 192.168.1.235 -f clusterconfig/turingpi-n2.yaml",
+        "talosctl apply-config -n 192.168.1.236 -f clusterconfig/turingpi-n3.yaml",
+        "talosctl apply-config -n 192.168.1.233 -f clusterconfig/turingpi-n4.yaml",
+        "```",
+      ],
+    },
+
+    // -------------------------------------------------------
+    // Monitoring stack: group Loki + Alloy + kube-prometheus-stack
+    // to keep dashboards/rules/alerts in sync
+    // -------------------------------------------------------
+    {
+      description: "Group monitoring stack updates",
+      matchPackageNames: ["kube-prometheus-stack", "loki", "alloy"],
+      groupName: "monitoring stack",
+      automerge: false,
+      addLabels: ["renovate/monitoring"],
+    },
+
+    // -------------------------------------------------------
+    // cert-manager: group chart + any image updates together
+    // -------------------------------------------------------
+    {
+      description: "Group cert-manager updates",
+      matchPackageNames: ["/cert-manager/"],
+      groupName: "cert-manager",
+    },
+
+    // -------------------------------------------------------
+    // Flux system: group all Flux components
+    // -------------------------------------------------------
+    {
+      description: "Group Flux updates",
+      matchPackageNames: ["/fluxcd/", "/^ghcr\\.io\\/fluxcd\\//"],
+      groupName: "flux",
+    },
+
+    // -------------------------------------------------------
+    // Major versions: always require human review
+    // -------------------------------------------------------
+    {
+      description: "Flag all major version bumps for manual review",
+      matchUpdateTypes: ["major"],
+      automerge: false,
+      addLabels: ["renovate/major", "needs-review"],
+    },
+  ],
+}
