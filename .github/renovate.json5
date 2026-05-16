@@ -3,15 +3,14 @@
 
   extends: [
     "config:best-practices", // stricter defaults than config:recommended
-    ":dependencyDashboard", // single issue as master update tracker
+    ":disableDependencyDashboard",
     ":semanticCommits", // chore(deps): ... commit messages
     ":timezone(America/Los_Angeles)",
   ],
 
-  // Run Saturday
-  schedule: ["* 0-6 * * 6"],
   prConcurrentLimit: 5,
   prHourlyLimit: 2,
+  rebaseWhen: "always",
 
   // Security advisories always get a PR, regardless of schedule
   vulnerabilityAlerts: {
