@@ -3,7 +3,7 @@ My homelab
 
 ## Kubernetes
 Running on a TuringPi with four RK1 nodes.
-
+```
       :oc     .,,'     cll           Distro: Talos
       .;;l    .;;,    :;;.           Version: v1.32.3
        ,;c.   .;;,    l;,            Node Count: 4
@@ -24,6 +24,6 @@ ock;    ,:c.  .::,  .l:,    .Ocd     Total CPUs: 32
       oxx'    .xx;    .xxd
        x;     .xx;     ,x
               .xx;
-
+```
 ## NAS
 Currently Unraid running on a very old ASRock C2750D4I with an integrated Intel Atom C2750
