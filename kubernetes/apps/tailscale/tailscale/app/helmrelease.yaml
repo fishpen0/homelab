@@ -16,7 +16,10 @@ spec:
   install:
     createNamespace: true
   values:
+    apiServerProxyConfig:
+      mode: "true"
     operatorConfig:
+      hostname: turingpi-k8s
       defaultTags:
         - tag:k8s
     oauth:
