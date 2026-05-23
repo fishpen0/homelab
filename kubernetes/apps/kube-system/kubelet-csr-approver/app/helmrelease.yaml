@@ -22,3 +22,7 @@ spec:
       - "192.168.1.0/24"
       - "fdd7:ad7c:fa:4181::/64"
       - "fe80::/10"
+      # ISP-assigned IPv6 prefix. Whitelisted at /48 because the /64 within can
+      # rotate; the /48 delegation is comparatively stable on AT&T fiber. See
+      # TODO/ipv6-stability.md for the proper fix.
+      - "2600:1700:89c2::/48"
