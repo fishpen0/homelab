@@ -23,22 +23,17 @@ controlPlane:
               - "fdd7:ad7c:fa:4181::/64"
           extraConfig:
             serverTLSBootstrap: true
-    - &basenetwork |-
-      machine:
-        network:
-          interfaces:
-            - interface: eth0
-              dhcp: true
-              routes:
-                - network: 0.0.0.0/0
-                  gateway: 192.168.1.1
 
 worker:
   talosImageURL: factory.talos.dev/installer/85f683902139269fbc5a7f64ea94a694d31e0b3d94347a225223fcbd042083ae
   patches:
     - *baselonghorn
-    - *basenetwork
 
+# Per-node static network config. The interface is `end0` on the Rockchip SoC
+# (not `eth0` — that name doesn't exist and silently disabled any DHCP/route
+# config we tried to apply through it). Talhelper doesn't support node-field
+# templating inside patches (Patches []string with v1alpha1.Config template
+# context only), so the per-node IP is repeated literally below.
 nodes:
   - hostname: "n1"
     ipAddress: 192.168.1.234
@@ -53,20 +48,72 @@ nodes:
           officialExtensions:
             - siderolabs/iscsi-tools
             - siderolabs/util-linux-tools
+    patches:
+      - |-
+        machine:
+          network:
+            interfaces:
+              - interface: end0
+                addresses:
+                  - 192.168.1.234/24
+                routes:
+                  - network: 0.0.0.0/0
+                    gateway: 192.168.1.254
+            nameservers:
+              - 192.168.1.254
 
   - hostname: "n2"
     ipAddress: 192.168.1.235
     installDisk: /dev/nvme0n1
     controlPlane: true
     schematic: *schematic
+    patches:
+      - |-
+        machine:
+          network:
+            interfaces:
+              - interface: end0
+                addresses:
+                  - 192.168.1.235/24
+                routes:
+                  - network: 0.0.0.0/0
+                    gateway: 192.168.1.254
+            nameservers:
+              - 192.168.1.254
 
   - hostname: "n3"
     ipAddress: 192.168.1.236
     installDisk: /dev/nvme0n1
     controlPlane: true
     schematic: *schematic
+    patches:
+      - |-
+        machine:
+          network:
+            interfaces:
+              - interface: end0
+                addresses:
+                  - 192.168.1.236/24
+                routes:
+                  - network: 0.0.0.0/0
+                    gateway: 192.168.1.254
+            nameservers:
+              - 192.168.1.254
 
   - hostname: "n4"
     ipAddress: 192.168.1.233
     installDisk: /dev/nvme0n1
     schematic: *schematic
+    patches:
+      - |-
+        machine:
+          network:
+            interfaces:
+              - interface: end0
+                addresses:
+                  - 192.168.1.233/24
+                routes:
+                  - network: 0.0.0.0/0
+                    gateway: 192.168.1.254
+            nameservers:
+              - 192.168.1.254
