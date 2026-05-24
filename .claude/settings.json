@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tpi --host turingpi.local --user root --password turing uart get *)",
+      "Bash(tpi --host turingpi.local --user root --password turing power status)",
+      "Bash(tpi --host turingpi.local --user root --password turing info)",
+      "Bash(nc -zv *)",
+      "Bash(ping -c *)",
+      "Bash(ping6 *)",
+      "Bash(arp -a)",
+      "Bash(nmap -sn *)",
+      "Bash(kubectl describe *)"
+    ]
+  }
+}
