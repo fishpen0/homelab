@@ -5,5 +5,4 @@ resources:
   - helmrepository.yaml
   - external-secrets-operator.yaml
   - 1password-connect.yaml
-  - clustersecretstore.yaml
   - secret.sops.yaml
