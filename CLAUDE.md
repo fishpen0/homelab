@@ -53,19 +53,26 @@ GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. 
 
 ```
 homelab/
-├── kubernetes/                 # Kubernetes manifests
-│   ├── flux-system/            # Flux bootstrap manifests
-│   └── infrastructure/         # All deployed infrastructure
-│       ├── longhorn/           # Distributed storage
-│       └── tailscale/          # VPN operator for remote access
-├── talos/                      # Talos cluster config (talconfig.yaml, SOPS secrets)
-├── tofu/                       # OpenTofu (Terraform) — currently manages Flux bootstrap
-└── TODO/                       # Work tracking
+├── kubernetes/                       # Kubernetes manifests
+│   ├── flux-system/                  # Flux bootstrap manifests
+│   └── apps/                         # All deployed apps + infrastructure, grouped by namespace
+│       ├── cert-manager/             # cert-manager operator + ClusterIssuer config
+│       ├── external-secrets/         # ESO operator + 1Password Connect + ClusterSecretStore
+│       ├── kube-system/              # metrics-server, kubelet-csr-approver
+│       ├── longhorn-system/          # Distributed storage + UI ingress
+│       ├── manyfold/                 # 3D print model library (will fold into default later)
+│       ├── observability/            # kube-prometheus-stack, Loki, Alloy
+│       └── tailscale/                # Tailscale operator (VPN ingress class)
+├── talos/                            # Talos cluster config (talconfig.yaml, SOPS secrets)
+├── tofu/                             # OpenTofu (Terraform) — currently manages Flux bootstrap
+└── TODO/                             # Work tracking
 ```
+
+Each app dir follows: `<category>/<app>/{ks.yaml, kustomization.yaml, app/}`. Infrastructure components live in their own namespace (cert-manager, longhorn-system, etc.); user-facing apps go in `default` per bbck/onedr0p homelab convention.
 
 ## Key Conventions
 
-- **All apps deploy via HelmRelease** — no raw Deployments. Add new apps as a HelmRelease + Kustomization under `infrastructure/`.
+- **All apps deploy via HelmRelease** — no raw Deployments. Add new apps as a HelmRelease + Flux Kustomization under `kubernetes/apps/<category>/<app>/`. For apps with no upstream chart, wrap raw images in `bjw-s` `app-template` (see `manyfold` for an example).
 - **Kustomize overlays** wire everything together. Every directory has a `kustomization.yaml` that must include new resources explicitly.
 - **Secrets use SOPS + age** encryption. The age key is at `talos/age-key.txt` (gitignored). Encrypted files end in `.sops.yaml`.
 - **Longhorn PVCs** use the `longhorn` storage class.
@@ -93,7 +100,7 @@ flux reconcile kustomization flux-system --with-source
 
 ### Apply a kustomization manually
 ```bash
-kubectl apply -k kubernetes/infrastructure/<component>/
+kubectl apply -k kubernetes/apps/<category>/<component>/app/
 ```
 
 ### Talos cluster management
@@ -152,10 +159,16 @@ done
 
 ## Adding New Infrastructure
 
-1. Create a directory under `kubernetes/infrastructure/<name>/`
-2. Add a `namespace.yaml`, `helmrepository.yaml`, `helmrelease.yaml`, and `kustomization.yaml`
-3. Reference the new directory in `kubernetes/infrastructure/kustomization.yaml`
-4. Commit to `main` — Flux reconciles automatically
+1. Create the directory tree `kubernetes/apps/<category>/<app>/` with:
+   - `ks.yaml` — Flux Kustomization (with `dependsOn` + `healthChecks` as needed)
+   - `kustomization.yaml` — wraps `ks.yaml`
+   - `app/` — actual manifests:
+     - `kustomization.yaml` listing each resource
+     - `namespace.yaml` (only for infrastructure apps in their own namespace; user apps live in `default`)
+     - `helmrepository.yaml`, `helmrelease.yaml`, plus any `Secret`/`ConfigMap`/`Ingress`/`ExternalSecret`/PVC files
+2. Add `<app>` to the parent `kubernetes/apps/<category>/kustomization.yaml` if it's new in that category
+3. Add `<category>` to `kubernetes/apps/kustomization.yaml` if the category is new
+4. Commit to `main` — Flux reconciles automatically (≤1 min pickup, ≤10 min to Ready)
 
 **Pattern notes:**
 - `HelmRepository` always goes in `namespace: flux-system`
