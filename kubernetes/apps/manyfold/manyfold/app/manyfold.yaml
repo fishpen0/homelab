@@ -1,0 +1,92 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: manyfold
+  namespace: default
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: app-template
+      version: 4.6.2
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+      interval: 1h
+  dependsOn:
+    - name: manyfold-postgres
+    - name: manyfold-redis
+  values:
+    controllers:
+      manyfold:
+        strategy: Recreate
+        containers:
+          manyfold:
+            image:
+              repository: manyfold3d/manyfold
+              tag: "0.141.0"
+            env:
+              # PUID/PGID match Unraid's `nobody:users` (99:100) so writes to the
+              # NFS share land with the expected ownership.
+              PUID: "99"
+              PGID: "100"
+              REDIS_URL: redis://manyfold-redis.default.svc.cluster.local:6379/1
+              DATABASE_ADAPTER: postgresql
+              DATABASE_HOST: manyfold-postgres.default.svc.cluster.local
+              DATABASE_PORT: "5432"
+              DATABASE_USER: manyfold
+              DATABASE_NAME: manyfold
+            envFrom:
+              # Provides SECRET_KEY_BASE + DATABASE_PASSWORD
+              - secretRef:
+                  name: manyfold-secrets
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 3214
+                  initialDelaySeconds: 60
+                  periodSeconds: 30
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 3214
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 3214
+                  periodSeconds: 10
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+    service:
+      manyfold:
+        controller: manyfold
+        ports:
+          http:
+            port: 3214
+    persistence:
+      library:
+        type: nfs
+        server: 192.168.1.98
+        path: /mnt/user/Library/3D_Prints
+        globalMounts:
+          - path: /library
