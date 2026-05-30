@@ -162,6 +162,23 @@ done
 - `HelmRelease` goes in the component's own namespace
 - `install.createNamespace: true` is standard on all HelmReleases
 
+### CRD bootstrap: split Kustomizations when a CR consumes a CRD from the same repo
+
+If a custom resource (e.g. `ClusterSecretStore`, `ClusterIssuer`, `Certificate`) lives in the same Flux Kustomization as the HelmRelease that installs its CRD, Flux's upfront server-side dry-run fails with `no matches for kind "Foo" in version "x/y"` — the CRD doesn't exist yet, so the whole Kustomization stalls and the operator never gets deployed. Classic chicken-and-egg.
+
+**Fix:** split into two Flux Kustomizations under the same app dir:
+
+- `<app>/app/` — operator HelmRelease + supporting Secrets/Configs (no CRs)
+- `<app>-config/app/` — the CRs that depend on the CRD
+
+The `-config` Kustomization sets `dependsOn: [<app>]` plus `healthChecks` on the operator's HelmRelease so the CRD is guaranteed installed before the CRs apply.
+
+Examples in this repo:
+- `cert-manager` (operator) + `cert-manager-config` (ClusterIssuer)
+- `external-secrets` (operator + 1password-connect) + `external-secrets-config` (ClusterSecretStore)
+
+Downstream apps that consume the CR (e.g. an `ExternalSecret` referencing the `ClusterSecretStore`) should `dependsOn` the `-config` Kustomization, not just the operator one — otherwise their own CRs may apply before the SecretStore/Issuer is Ready.
+
 ## talhelper genconfig — SOPS Key Required
 
 `talhelper genconfig` will fail with a SOPS decryption error unless the age key is explicitly provided:
