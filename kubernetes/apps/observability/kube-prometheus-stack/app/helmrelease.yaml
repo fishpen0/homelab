@@ -20,9 +20,8 @@ spec:
     fullnameOverride: "kps"
 
     prometheus:
-      service:
-        annotations:
-          tailscale.com/expose: "true"
+      # Exposed over Tailscale via the userspace Ingress in ../../ingress, not the
+      # service-level expose annotation (which spawns a privileged proxy).
       prometheusSpec:
         retention: 15d
         retentionSize: 18GB
@@ -62,7 +61,9 @@ spec:
 
     grafana:
       enabled: true
-      adminPassword: "changeme"
+      admin:
+        existingSecret: grafana-admin-secret
+        passwordKey: admin-password
       # RWO Longhorn PVC: RollingUpdate deadlocks (new pod can't attach the
       # volume the old pod holds), which hangs the helm upgrade. Recreate
       # terminates the old pod first.
