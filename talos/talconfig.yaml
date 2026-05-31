@@ -1,6 +1,6 @@
 clusterName: turingpi
 talosVersion: v1.12.0
-endpoint: https://192.168.1.234:6443
+endpoint: https://192.168.1.10:6443
 allowSchedulingOnControlPlanes: true
 
 controlPlane:
@@ -56,6 +56,8 @@ nodes:
               - interface: end0
                 addresses:
                   - 192.168.1.234/24
+                vip:
+                  ip: 192.168.1.10
                 routes:
                   - network: 0.0.0.0/0
                     gateway: 192.168.1.254
@@ -75,6 +77,8 @@ nodes:
               - interface: end0
                 addresses:
                   - 192.168.1.235/24
+                vip:
+                  ip: 192.168.1.10
                 routes:
                   - network: 0.0.0.0/0
                     gateway: 192.168.1.254
@@ -94,6 +98,8 @@ nodes:
               - interface: end0
                 addresses:
                   - 192.168.1.236/24
+                vip:
+                  ip: 192.168.1.10
                 routes:
                   - network: 0.0.0.0/0
                     gateway: 192.168.1.254
