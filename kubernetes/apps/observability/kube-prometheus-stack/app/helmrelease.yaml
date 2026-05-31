@@ -63,6 +63,11 @@ spec:
     grafana:
       enabled: true
       adminPassword: "changeme"
+      # RWO Longhorn PVC: RollingUpdate deadlocks (new pod can't attach the
+      # volume the old pod holds), which hangs the helm upgrade. Recreate
+      # terminates the old pod first.
+      deploymentStrategy:
+        type: Recreate
       persistence:
         enabled: true
         storageClassName: longhorn
