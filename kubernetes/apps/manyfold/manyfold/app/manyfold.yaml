@@ -38,6 +38,8 @@ spec:
               DATABASE_PORT: "5432"
               DATABASE_USER: manyfold
               DATABASE_NAME: manyfold
+              # Disable Devise/zxcvbn password strength check (homelab single-user).
+              MIN_PASSWORD_SCORE: "0"
             envFrom:
               # Provides SECRET_KEY_BASE + DATABASE_PASSWORD
               - secretRef:
