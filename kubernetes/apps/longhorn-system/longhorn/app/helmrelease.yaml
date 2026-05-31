@@ -20,7 +20,10 @@ spec:
     defaultSettings:
       defaultReplicaCount: 2
       backupstorePollInterval: 300
-      createDefaultDiskLabeledNodes: true
+      # All four nodes are identical NVMe TuringPi modules — no need to gate disk
+      # creation on labels. Default-true was cargo-culted from heterogeneous-cluster
+      # reference repos and silently broke after the 1.8 → 1.11 bump.
+      createDefaultDiskLabeledNodes: false
       guaranteedInstanceManagerCPU: 12
       guaranteedEngineManagerCPU: 12
       logLevel: info
@@ -29,7 +32,9 @@ spec:
       concurrentBackupRestorePerNodeLimit: 5
       # Storage settings
       storageNetwork: ""
-      storageReservedPercentageForDefaultDisk: 5
+      # 10% buffer keeps headroom for the kubelet image cache + containerd that
+      # share the EPHEMERAL partition with Longhorn (~96GB on a ~960GB NVMe).
+      storageReservedPercentageForDefaultDisk: 10
       v2DataEngine: true
       # Monitoring
       defaultDataPath: /var/lib/longhorn
