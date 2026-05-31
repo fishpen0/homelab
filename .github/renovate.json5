@@ -10,7 +10,7 @@
 
   prConcurrentLimit: 5,
   prHourlyLimit: 2,
-  rebaseWhen: "always",
+  rebaseWhen: "behind-base-branch",
 
   // Security advisories always get a PR, regardless of schedule
   vulnerabilityAlerts: {
