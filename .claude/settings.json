@@ -9,7 +9,16 @@
       "Bash(ping6 *)",
       "Bash(arp -a)",
       "Bash(nmap -sn *)",
-      "Bash(kubectl describe *)"
+      "Bash(kubectl describe *)",
+      "Bash(kubectl get *)",
+      "Bash(kubectl -n * get *)",
+      "Bash(kubectl -n * describe *)",
+      "Bash(kubectl logs *)",
+      "Bash(kubectl -n * logs *)",
+      "Bash(kubectl kustomize *)",
+      "Bash(flux get *)",
+      "Bash(talosctl * read *)",
+      "Bash(talosctl * get *)"
     ]
   }
 }
