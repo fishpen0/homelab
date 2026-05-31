@@ -22,12 +22,7 @@ spec:
       hostname: turingpi-k8s
       defaultTags:
         - tag:k8s
-    oauth:
-      clientId:
-        secretKeyRef:
-          name: operator-oauth
-          key: client_id
-      clientSecret:
-        secretKeyRef:
-          name: operator-oauth
-          key: client_secret
+    # No oauth values: the operator auto-discovers the conventionally-named
+    # operator-oauth Secret. Keeping oauth out of Helm values leaves SOPS as the
+    # sole owner of that Secret, avoiding the Helm/Flux dual-ownership race that
+    # let the operator boot with stale creds on cold start.
