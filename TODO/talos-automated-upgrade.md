@@ -26,7 +26,7 @@ automatically. This means:
 - Each node sees the new installer image tag in its config and self-upgrades
 
 Requires: GitHub Actions runner with `talosctl` + age key access (via secret),
-network access to the cluster API (192.168.1.234:6443) — likely needs Tailscale
+network access to the cluster API (192.168.1.10:6443) — likely needs Tailscale
 in the Actions runner.
 
 ### Option B — Talhelper GitHub Action

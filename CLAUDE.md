@@ -42,7 +42,7 @@ GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. 
 
 - **OS**: Talos Linux v1.10.6 (immutable, no SSH — managed via `talosctl`)
 - **Cluster name**: `turingpi`
-- **API endpoint**: `https://192.168.1.234:6443`
+- **API endpoint**: `https://192.168.1.10:6443` (Talos native VIP, floats across n1–n3)
 - **Nodes**: n1–n3 are control planes (scheduling allowed), n4 is the worker
 - **Node IPs**: n1=192.168.1.234, n2=192.168.1.235, n3=192.168.1.236, n4=192.168.1.233
 - **CNI**: Flannel
@@ -115,7 +115,7 @@ talosctl -n 192.168.1.234 logs -f
 talosctl bootstrap -n 192.168.1.234
 
 # Get kubeconfig
-talosctl kubeconfig -n 192.168.1.234
+talosctl kubeconfig -n 192.168.1.10
 ```
 
 ### Regenerate Talos node configs (after editing talconfig.yaml)

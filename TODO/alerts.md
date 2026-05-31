@@ -13,7 +13,7 @@ what we'd have wanted on this incident.
 ### Cluster reachability / drift from declared state
 - [ ] **Node not Ready** for >5m — `kube_node_status_condition{condition="Ready",status="true"} == 0`
 - [ ] **etcd quorum lost / leader missing** — `etcd_server_has_leader == 0`
-- [ ] **kube-apiserver down** — blackbox probe of `https://192.168.1.234:6443` from outside the cluster (would have caught yesterday on minute one)
+- [ ] **kube-apiserver down** — blackbox probe of `https://192.168.1.10:6443` from outside the cluster (would have caught yesterday on minute one)
 - [ ] **Node IP changed from declared** — compare `kube_node_info{internal_ip=~"..."}` against expected `.233-.236`
 
 ### Flux health
