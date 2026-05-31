@@ -47,9 +47,6 @@ spec:
       resizerReplicaCount: 2
       snapshotterReplicaCount: 2
       kubeletRootDir: /var/lib/kubelet
-    # Node selector for worker nodes only
-    nodeSelector:
-      node-role.kubernetes.io/worker: ""
     # Priority class for critical components
     priorityClass:
       create: true
