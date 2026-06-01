@@ -40,7 +40,7 @@ GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. 
 
 ## Cluster Overview
 
-- **OS**: Talos Linux v1.10.6 (immutable, no SSH — managed via `talosctl`)
+- **OS**: Talos Linux (immutable, no SSH — managed via `talosctl`). Version is pinned in `talos/talconfig.yaml` and bumped by Renovate.
 - **Cluster name**: `turingpi`
 - **API endpoint**: `https://192.168.1.10:6443` (Talos native VIP, floats across n1–n3)
 - **Nodes**: n1–n3 are control planes (scheduling allowed), n4 is the worker

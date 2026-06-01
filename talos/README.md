@@ -4,11 +4,11 @@
 - **Fresh Configuration**: All old cluster state has been cleaned up
 - **SOPS Encryption**: Properly configured with age encryption keys
 - **Longhorn Ready**: Configuration optimized for 4-node cluster with SSDs
-- **Best Practices**: Following current Talos v1.10.6 recommendations
+- **Best Practices**: Following current Talos recommendations
 
 ## Cluster Configuration
 - **Cluster Name**: turingpi
-- **Talos Version**: v1.10.6
+- **Talos Version**: pinned in `talconfig.yaml` (bumped by Renovate)
 - **Nodes**: 4 nodes (3 control plane, 1 worker)
 - **Network**: 192.168.1.0/24 subnet
 
