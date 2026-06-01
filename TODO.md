@@ -12,3 +12,4 @@ See [TODO/](TODO/) for individual items:
 - [Tailscale Terraform Provider](TODO/tailscale-tofu.md)
 - [IPv6 Stability](TODO/ipv6-stability.md)
 - [Operational Alerts](TODO/alerts.md)
+- [Auto-updating README banner (kubefetch)](TODO/readme-neofetch.md)
