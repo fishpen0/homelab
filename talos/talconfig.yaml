@@ -62,7 +62,7 @@ nodes:
                   - network: 0.0.0.0/0
                     gateway: 192.168.1.254
             nameservers:
-              - 192.168.1.254
+              - 192.168.1.42
 
   - hostname: "n2"
     ipAddress: 192.168.1.235
@@ -83,7 +83,7 @@ nodes:
                   - network: 0.0.0.0/0
                     gateway: 192.168.1.254
             nameservers:
-              - 192.168.1.254
+              - 192.168.1.42
 
   - hostname: "n3"
     ipAddress: 192.168.1.236
@@ -104,7 +104,7 @@ nodes:
                   - network: 0.0.0.0/0
                     gateway: 192.168.1.254
             nameservers:
-              - 192.168.1.254
+              - 192.168.1.42
 
   - hostname: "n4"
     ipAddress: 192.168.1.233
@@ -122,4 +122,4 @@ nodes:
                   - network: 0.0.0.0/0
                     gateway: 192.168.1.254
             nameservers:
-              - 192.168.1.254
+              - 192.168.1.42
