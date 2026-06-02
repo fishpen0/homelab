@@ -28,8 +28,7 @@ spec:
               repository: manyfold3d/manyfold
               tag: "0.141.0"
             env:
-              # PUID/PGID match Unraid's `nobody:users` (99:100) so writes to the
-              # NFS share land with the expected ownership.
+              # Match the SMB mount's uid/gid mapping (nobody:users, 99:100).
               PUID: "99"
               PGID: "100"
               REDIS_URL: redis://manyfold-redis.default.svc.cluster.local:6379/1
@@ -87,8 +86,7 @@ spec:
             port: 3214
     persistence:
       library:
-        type: nfs
-        server: 192.168.1.98
-        path: /mnt/user/Library/3D_Prints
+        # SMB-backed via the manyfold-library PVC → nas-3dprints PV.
+        existingClaim: manyfold-library
         globalMounts:
           - path: /library

@@ -1,0 +1,15 @@
+---
+# Static bind to the cluster-wide nas-3dprints SMB PV (csi-driver-smb-config).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: manyfold-library
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: nas-3dprints
+  resources:
+    requests:
+      storage: 1Ti

@@ -1,0 +1,11 @@
+---
+# Manyfold library. Constant fields injected by the patch in ../kustomization.yaml.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nas-3dprints
+spec:
+  csi:
+    volumeHandle: nas-3dprints
+    volumeAttributes:
+      source: //192.168.1.98/Library/3D_Prints

@@ -6,5 +6,6 @@ resources:
   - postgres-pvc.yaml
   - postgres.yaml
   - redis.yaml
+  - library-pvc.yaml
   - manyfold.yaml
   - ingress.yaml

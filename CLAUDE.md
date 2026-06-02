@@ -203,6 +203,21 @@ SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig
 
 The age key is at `talos/age-key.txt` (gitignored). Without `SOPS_AGE_KEY_FILE` set, the command silently finds no valid decryption key and exits with error.
 
+## NAS-backed SMB shares (Unraid)
+
+Pods mount Unraid SMB shares via `csi-driver-smb`. Kubernetes has no in-tree CIFS volume, so the driver is required (NFS would be in-tree but offers no credential auth and depends on node-IP stability we don't have — see `TODO/ipv6-stability.md`).
+
+Layout (operator + `-config` split, like cert-manager):
+- `kube-system/csi-driver-smb/` — the driver HelmRelease.
+- `kube-system/csi-driver-smb-config/` — one shared `smb-creds` ExternalSecret (cluster's single SMB identity, 1Password Login item `unraid-k8s-user`) + the share PVs under `app/shares/`. A JSON6902 patch in `app/kustomization.yaml` injects all constant fields (driver, credential, mountOptions, `uid=99,gid=100`, capacity, `Retain`).
+
+**To mount a new share/subfolder:**
+1. Add a PV at `csi-driver-smb-config/app/shares/<name>.yaml` — only `metadata.name`, `csi.volumeHandle`, and `csi.volumeAttributes.source` (`//192.168.1.98/<Share>/<subdir>`). Everything else comes from the patch.
+2. List it in `csi-driver-smb-config/app/kustomization.yaml`.
+3. In the consuming app: a `PersistentVolumeClaim` (`storageClassName: ""`, `volumeName: <name>`, RWX) and mount it with bjw-s `existingClaim`. Add `dependsOn: csi-driver-smb-config` to the app's `ks.yaml`.
+
+No credential work per share — `unraid-k8s-user` has RW on the whole share. A PV↔PVC bind is 1:1, so two apps needing the same subfolder need two PVs (same `source`, different names).
+
 ## TLS Architecture Notes
 
 ### metrics-server TLS (two separate connections)

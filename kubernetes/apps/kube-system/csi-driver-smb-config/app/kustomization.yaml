@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - externalsecret.yaml
+  - shares/3dprints.yaml
+# Inject the fields constant across every Unraid SMB share, so a new share PV is
+# just name + volumeHandle + source. Ownership maps to nobody:users (99:100) via
+# uid/gid since SMB carries no POSIX ownership.
+patches:
+  - target:
+      kind: PersistentVolume
+    patch: |-
+      - op: add
+        path: /spec/capacity
+        value:
+          storage: 1Ti
+      - op: add
+        path: /spec/accessModes
+        value:
+          - ReadWriteMany
+      - op: add
+        path: /spec/storageClassName
+        value: ""
+      - op: add
+        path: /spec/persistentVolumeReclaimPolicy
+        value: Retain
+      - op: add
+        path: /spec/mountOptions
+        value:
+          - dir_mode=0777
+          - file_mode=0777
+          - uid=99
+          - gid=100
+          - noperm
+          - mfsymlinks
+          - vers=3.1.1
+      - op: add
+        path: /spec/csi/driver
+        value: smb.csi.k8s.io
+      - op: add
+        path: /spec/csi/nodeStageSecretRef
+        value:
+          name: smb-creds
+          namespace: csi-driver-smb
