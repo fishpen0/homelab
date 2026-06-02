@@ -1,0 +1,35 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: smb-volume-alerts
+  namespace: observability
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: smb.volume
+      rules:
+        - alert: SmbPvcNotBound
+          expr: |
+            kube_persistentvolumeclaim_status_phase{
+              persistentvolumeclaim="manyfold-library",
+              phase="Bound"
+            } == 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "SMB PVC manyfold-library is not Bound"
+            description: "The manyfold-library PVC (SMB/NAS share) has been in a non-Bound phase for >2m. NAS at 192.168.1.98 may be offline or the share path changed."
+        - alert: SmbPvcLost
+          expr: |
+            kube_persistentvolumeclaim_status_phase{
+              persistentvolumeclaim="manyfold-library",
+              phase="Lost"
+            } == 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "SMB PVC manyfold-library is Lost"
+            description: "The manyfold-library PVC has lost its binding to the PV. The SMB mount is gone."
