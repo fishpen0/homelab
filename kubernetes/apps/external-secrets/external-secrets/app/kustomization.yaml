@@ -6,3 +6,4 @@ resources:
   - external-secrets-operator.yaml
   - 1password-connect.yaml
   - secret.sops.yaml
+  - dashboard-configmap.yaml
