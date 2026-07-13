@@ -18,6 +18,9 @@ spec:
     createNamespace: true
   values:
     prometheus:
+      # scrape RBAC for the secure metrics ports
+      serviceAccount: kps-prometheus
+      namespace: observability
       serviceMonitor:
         enabled: true
         controller:
