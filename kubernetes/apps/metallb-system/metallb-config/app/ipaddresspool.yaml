@@ -1,0 +1,10 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: lan-pool
+  namespace: metallb-system
+spec:
+  # Below the AT&T gateway's default DHCP range (.64+). In use nearby:
+  # .1 (HA macvlan), .2 (matter-server macvlan), .10 (Talos VIP), .42 (AdGuard)
+  addresses:
+    - 192.168.1.20-192.168.1.29
