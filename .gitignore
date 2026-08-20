@@ -73,11 +73,12 @@ build/
 ehthumbs.db
 Thumbs.db
 
-# Talos cluster sensitive files
-systems/turingpi/talos/age-key.txt
-systems/turingpi/talos/talsecret.sops.yaml
-systems/turingpi/talos/.sops.yaml
-systems/turingpi/talos/clusterconfig/
+# Talos cluster sensitive files.
+# Matched by name at any depth — these previously hardcoded systems/turingpi/talos/,
+# which silently stopped matching when the tree moved to talos/, leaving the age
+# private key untracked but NOT ignored in a public repo.
+age-key.txt
+talsecret.sops.yaml
 
 # MCP environment files (contain sensitive tokens)
 .env.mcp
