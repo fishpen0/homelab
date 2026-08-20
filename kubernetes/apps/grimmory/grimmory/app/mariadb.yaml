@@ -1,0 +1,70 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: grimmory-mariadb
+  namespace: default
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: app-template
+      version: 5.0.1
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+      interval: 1h
+  values:
+    controllers:
+      mariadb:
+        strategy: Recreate
+        containers:
+          mariadb:
+            image:
+              repository: mariadb
+              tag: "11.4@sha256:4f1d8d202fcf7bcb3902f63af09f9c1a050c2922a89652f22abaec0d4f015e83"
+            env:
+              MARIADB_DATABASE: grimmory
+              MARIADB_USER: grimmory
+            envFrom:
+              # Provides MARIADB_PASSWORD + MARIADB_ROOT_PASSWORD (and
+              # DATABASE_PASSWORD, ignored here).
+              - secretRef:
+                  name: grimmory-secrets
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+        pod:
+          enableServiceLinks: false
+    service:
+      mariadb:
+        controller: mariadb
+        ports:
+          mariadb:
+            port: 3306
+    persistence:
+      data:
+        existingClaim: grimmory-mariadb-data
+        globalMounts:
+          - path: /var/lib/mysql
