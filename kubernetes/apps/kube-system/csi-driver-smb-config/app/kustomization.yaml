@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - externalsecret.yaml
   - shares/3dprints.yaml
+  - shares/books.yaml
 # Inject the fields constant across every Unraid SMB share, so a new share PV is
 # just name + volumeHandle + source. Ownership maps to nobody:users (99:100) via
 # uid/gid since SMB carries no POSIX ownership.

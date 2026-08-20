@@ -1,0 +1,25 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: grimmory
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./kubernetes/apps/grimmory/grimmory/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: flux-system
+    # DATABASE_PASSWORD / MARIADB_* come from 1Password via the ClusterSecretStore.
+    - name: external-secrets-config
+    # MariaDB, /app/data and /bookdrop are Longhorn PVCs.
+    - name: longhorn
+    # /books is the nas-books SMB PV.
+    - name: csi-driver-smb-config
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: grimmory
+      namespace: default

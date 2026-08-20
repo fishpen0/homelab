@@ -1,0 +1,39 @@
+---
+# Application data: config, cover art, search index, Kobo/KOReader sync state.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grimmory-data
+  namespace: default
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 10Gi
+---
+# BookDrop staging area. Cluster-only — files land here via the web UI upload and
+# are ingested into /books, so it never needs to be large.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grimmory-bookdrop
+  namespace: default
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grimmory-mariadb-data
+  namespace: default
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi

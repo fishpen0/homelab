@@ -1,0 +1,16 @@
+---
+# Static bind to the cluster-wide nas-books SMB PV (csi-driver-smb-config).
+# Mounted read-write: grimmory writes metadata back into the book files.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grimmory-library
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: nas-books
+  resources:
+    requests:
+      storage: 1Ti

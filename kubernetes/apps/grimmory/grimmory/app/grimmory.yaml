@@ -1,0 +1,109 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: grimmory
+  namespace: default
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: app-template
+      version: 5.0.1
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+      interval: 1h
+  dependsOn:
+    - name: grimmory-mariadb
+  values:
+    controllers:
+      grimmory:
+        # RWO Longhorn claims for /app/data and /bookdrop — no two pods at once.
+        strategy: Recreate
+        containers:
+          grimmory:
+            image:
+              repository: ghcr.io/grimmory-tools/grimmory
+              tag: "v3.3.2@sha256:8a3a046822dee460f3e67df5d548e3b9842057a54ed830026edb20ecc116c8ce"
+            env:
+              # The entrypoint starts as root, then su-execs to this uid/gid.
+              # Matches the SMB mount's uid/gid mapping (nobody:users, 99:100).
+              USER_ID: "99"
+              GROUP_ID: "100"
+              TZ: America/Los_Angeles
+              # Tells grimmory /books is a network mount: it stops relying on
+              # inotify (cifs has no working file watches) and polls instead.
+              DISK_TYPE: NETWORK
+              # Discrete vars rather than DATABASE_URL so the app builds the JDBC
+              # URL itself — its default carries createDatabaseIfNotExist and the
+              # UTC connection-timezone params we want.
+              DATABASE_HOST: grimmory-mariadb.default.svc.cluster.local
+              DATABASE_PORT: "3306"
+              DATABASE_NAME: grimmory
+              DATABASE_USERNAME: grimmory
+              SWAGGER_ENABLED: "false"
+              FORCE_DISABLE_OIDC: "false"
+            envFrom:
+              # Provides DATABASE_PASSWORD
+              - secretRef:
+                  name: grimmory-secrets
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v1/healthcheck
+                    port: 6060
+                  periodSeconds: 30
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v1/healthcheck
+                    port: 6060
+                  periodSeconds: 10
+                  failureThreshold: 5
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v1/healthcheck
+                    port: 6060
+                  periodSeconds: 10
+                  # JVM boot plus first-run schema migration on an RK1 is slow.
+                  failureThreshold: 60
+            resources:
+              requests:
+                cpu: 100m
+                memory: 768Mi
+              limits:
+                # The image's JAVA_TOOL_OPTIONS caps heap at 60% of this.
+                memory: 2Gi
+        pod:
+          enableServiceLinks: false
+    service:
+      grimmory:
+        controller: grimmory
+        ports:
+          http:
+            port: 6060
+    persistence:
+      data:
+        existingClaim: grimmory-data
+        globalMounts:
+          - path: /app/data
+      bookdrop:
+        existingClaim: grimmory-bookdrop
+        globalMounts:
+          - path: /bookdrop
+      library:
+        # SMB-backed via the grimmory-library PVC → nas-books PV.
+        existingClaim: grimmory-library
+        globalMounts:
+          - path: /books
