@@ -12,6 +12,8 @@ spec:
     name: flux-system
   dependsOn:
     - name: flux-system
+    # Provides the shared bjw-s HelmRepository.
+    - name: helm-repositories
     - name: external-secrets-config
     - name: longhorn
     - name: csi-driver-smb-config
