@@ -172,6 +172,11 @@ done
 
 **Pattern notes:**
 - `HelmRepository` always goes in `namespace: flux-system`
+- A `HelmRepository` used by **exactly one** app lives in that app's own `app/` dir. Once a
+  *second* app needs the same repo, move it to `kubernetes/apps/flux-repositories/helm-repositories/app/`
+  and give every consumer `dependsOn: helm-repositories`. Two Kustomizations cannot both declare
+  the same object — the second fails with a Flux ownership conflict. `bjw-s` (manyfold, grimmory)
+  and `grafana` (loki, alloy) already live there.
 - `HelmRelease` goes in the component's own namespace
 - `install.createNamespace: true` is standard on all HelmReleases
 

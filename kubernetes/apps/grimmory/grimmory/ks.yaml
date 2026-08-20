@@ -12,6 +12,8 @@ spec:
     name: flux-system
   dependsOn:
     - name: flux-system
+    # Provides the shared bjw-s HelmRepository.
+    - name: helm-repositories
     # DATABASE_PASSWORD / MARIADB_* come from 1Password via the ClusterSecretStore.
     - name: external-secrets-config
     # MariaDB, /app/data and /bookdrop are Longhorn PVCs.

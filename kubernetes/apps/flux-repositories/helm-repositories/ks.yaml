@@ -1,0 +1,25 @@
+---
+# HelmRepositories consumed by more than one app.
+#
+# A HelmRepository is a cluster-scoped-ish singleton (one object in flux-system),
+# but Flux gives every applied object an owning Kustomization. If two app
+# Kustomizations both declared the same repo, the second would fail with an
+# ownership conflict — so shared repos live here instead, and every consumer
+# takes a `dependsOn: helm-repositories`.
+#
+# A repo used by exactly one app still belongs in that app's own dir. Move it
+# here only when a second consumer appears.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: helm-repositories
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./kubernetes/apps/flux-repositories/helm-repositories/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: flux-system
