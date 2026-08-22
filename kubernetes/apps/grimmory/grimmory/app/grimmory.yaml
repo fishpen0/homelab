@@ -33,9 +33,11 @@ spec:
               USER_ID: "99"
               GROUP_ID: "100"
               TZ: America/Los_Angeles
-              # Tells grimmory /books is a network mount: it stops relying on
-              # inotify (cifs has no working file watches) and polls instead.
-              DISK_TYPE: NETWORK
+              # DISK_TYPE is deliberately left unset (not NETWORK). Network mode
+              # disables grimmory's rename/organize features, which we want more
+              # than we want cifs polling. Trade-off: /books is an SMB mount with
+              # no working inotify, so files dropped on the share out-of-band may
+              # not be noticed — new books come in via the API instead.
               # Discrete vars rather than DATABASE_URL so the app builds the JDBC
               # URL itself — its default carries createDatabaseIfNotExist and the
               # UTC connection-timezone params we want.
