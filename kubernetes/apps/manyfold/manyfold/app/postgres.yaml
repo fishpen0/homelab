@@ -22,23 +22,29 @@ spec:
         containers:
           postgres:
             image:
-              # PG17, upgraded in place 15.10 -> 16 -> 17 on 2026-08-30 via
-              # pgautoupgrade (pg_upgrade --link). Keep a trixie-based tag: the data
-              # was reindexed under glibc 2.41, so a bookworm image (2.36) would
-              # reintroduce a collation version mismatch on text indexes.
-              repository: postgres
-              tag: "17.11-trixie@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675"
+              # UPGRADE BOOT (PG17 -> PG18) -- TEMPORARY, revert to postgres:18.6-trixie
+              # once `select version()` reports 18. Runs `pg_upgrade --link` in place.
+              # DELETES the old cluster on success; snapshot manyfold-pg17-pre-upgrade
+              # is the rollback point.
+              repository: pgautoupgrade/pgautoupgrade
+              tag: "18-trixie@sha256:505411c0e6fd94ac7a454de31f13e3063ebfe382f8e5a18affeb89dd052058ff"
             env:
               POSTGRES_USER: manyfold
               POSTGRES_DB: manyfold
+              # DO NOT REMOVE. PG18+ images default to PGDATA=/var/lib/postgresql/18/docker
+              # with VOLUME=/var/lib/postgresql. Our data lives at the pre-18 path, so this
+              # explicit override is what keeps PG18 pointed at it. Drop this line and PG18
+              # finds an empty dir, runs initdb, and manyfold comes up against a blank
+              # database. Explicit PGDATA is fully supported upstream -- keep it.
               PGDATA: /var/lib/postgresql/data/pgdata
             envFrom:
               - secretRef:
                   # Provides POSTGRES_PASSWORD (and DATABASE_PASSWORD, ignored here)
                   name: manyfold-secrets
             probes:
+              # Disabled for the UPGRADE BOOT ONLY.
               liveness:
-                enabled: true
+                enabled: false
                 custom: true
                 spec:
                   exec:
@@ -46,7 +52,7 @@ spec:
                   initialDelaySeconds: 30
                   periodSeconds: 10
               readiness:
-                enabled: true
+                enabled: false
                 custom: true
                 spec:
                   exec:
@@ -58,7 +64,7 @@ spec:
                 cpu: 50m
                 memory: 128Mi
               limits:
-                memory: 512Mi
+                memory: 2Gi
         pod:
           enableServiceLinks: false
     service:
