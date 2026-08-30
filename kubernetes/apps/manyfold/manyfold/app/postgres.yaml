@@ -22,8 +22,14 @@ spec:
         containers:
           postgres:
             image:
-              repository: postgres
-              tag: "18.6@sha256:06cad38a5d9f5d24b4d83d86def30795d5e4b757fedbf5281172b576dedcd941"
+              # UPGRADE BOOT (PG15 -> PG16) -- TEMPORARY, revert to postgres:16.15
+              # once `select version()` reports 16. This image detects the PG15 data
+              # directory and runs `pg_upgrade --link` in place on first start: no
+              # dump, no second volume, downtime independent of database size.
+              # It DELETES the old cluster on success, so a Longhorn snapshot of
+              # manyfold-postgres-data is mandatory before this rolls out.
+              repository: pgautoupgrade/pgautoupgrade
+              tag: "16-trixie@sha256:ce451dbb2197b298566330f94ae56eb92fc64459f815f7207c06ccffb8ad7648"
             env:
               POSTGRES_USER: manyfold
               POSTGRES_DB: manyfold
@@ -33,8 +39,12 @@ spec:
                   # Provides POSTGRES_PASSWORD (and DATABASE_PASSWORD, ignored here)
                   name: manyfold-secrets
             probes:
+              # Both disabled for the UPGRADE BOOT ONLY. pg_upgrade holds the server
+              # down while it runs, so pg_isready fails -- and a liveness restart
+              # part-way through a --link upgrade is how you corrupt the cluster.
+              # Re-enable (enabled: true) in the same commit that reverts the image.
               liveness:
-                enabled: true
+                enabled: false
                 custom: true
                 spec:
                   exec:
@@ -42,7 +52,7 @@ spec:
                   initialDelaySeconds: 30
                   periodSeconds: 10
               readiness:
-                enabled: true
+                enabled: false
                 custom: true
                 spec:
                   exec:
@@ -54,7 +64,11 @@ spec:
                 cpu: 50m
                 memory: 128Mi
               limits:
-                memory: 512Mi
+                # Raised from 512Mi for the upgrade boot: pg_upgrade reindexes
+                # afterwards, and an OOM-kill part-way through corrupts the
+                # cluster the same way a liveness restart would. Drop back to
+                # 512Mi in the commit that reverts the image.
+                memory: 2Gi
         pod:
           enableServiceLinks: false
     service:
