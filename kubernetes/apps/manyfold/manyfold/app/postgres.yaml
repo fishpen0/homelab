@@ -22,12 +22,12 @@ spec:
         containers:
           postgres:
             image:
-              # PG16, upgraded in place from 15.10 on 2026-08-30 via pgautoupgrade
-              # (pg_upgrade --link). Stay on a trixie-based tag: the data was
-              # reindexed and had its collation version refreshed under glibc 2.41,
-              # so a bookworm image (2.36) would reintroduce a collation mismatch.
-              repository: postgres
-              tag: "16.15-trixie@sha256:f1c3376c26f2609ab9f29f71f824103fe2fcd8ee0346485cb6122a4f93df6f94"
+              # UPGRADE BOOT (PG16 -> PG17) -- TEMPORARY, revert to postgres:17.11-trixie
+              # once `select version()` reports 17. Runs `pg_upgrade --link` in place
+              # on first start. DELETES the old cluster on success; snapshot
+              # manyfold-pg16-pre-upgrade is the rollback point.
+              repository: pgautoupgrade/pgautoupgrade
+              tag: "17-trixie@sha256:dcce7833c4ca3420e7fe51de73bd01bc149031b43bfc9510391f590833bfd56b"
             env:
               POSTGRES_USER: manyfold
               POSTGRES_DB: manyfold
@@ -37,8 +37,10 @@ spec:
                   # Provides POSTGRES_PASSWORD (and DATABASE_PASSWORD, ignored here)
                   name: manyfold-secrets
             probes:
+              # Both disabled for the UPGRADE BOOT ONLY -- pg_isready fails while
+              # pg_upgrade runs, and a restart part-way through corrupts --link.
               liveness:
-                enabled: true
+                enabled: false
                 custom: true
                 spec:
                   exec:
@@ -46,7 +48,7 @@ spec:
                   initialDelaySeconds: 30
                   periodSeconds: 10
               readiness:
-                enabled: true
+                enabled: false
                 custom: true
                 spec:
                   exec:
@@ -58,7 +60,8 @@ spec:
                 cpu: 50m
                 memory: 128Mi
               limits:
-                memory: 512Mi
+                # Raised for the upgrade boot (reindex); back to 512Mi after.
+                memory: 2Gi
         pod:
           enableServiceLinks: false
     service:
