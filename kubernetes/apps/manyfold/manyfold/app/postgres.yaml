@@ -22,12 +22,12 @@ spec:
         containers:
           postgres:
             image:
-              # UPGRADE BOOT (PG16 -> PG17) -- TEMPORARY, revert to postgres:17.11-trixie
-              # once `select version()` reports 17. Runs `pg_upgrade --link` in place
-              # on first start. DELETES the old cluster on success; snapshot
-              # manyfold-pg16-pre-upgrade is the rollback point.
-              repository: pgautoupgrade/pgautoupgrade
-              tag: "17-trixie@sha256:dcce7833c4ca3420e7fe51de73bd01bc149031b43bfc9510391f590833bfd56b"
+              # PG17, upgraded in place 15.10 -> 16 -> 17 on 2026-08-30 via
+              # pgautoupgrade (pg_upgrade --link). Keep a trixie-based tag: the data
+              # was reindexed under glibc 2.41, so a bookworm image (2.36) would
+              # reintroduce a collation version mismatch on text indexes.
+              repository: postgres
+              tag: "17.11-trixie@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675"
             env:
               POSTGRES_USER: manyfold
               POSTGRES_DB: manyfold
@@ -37,10 +37,8 @@ spec:
                   # Provides POSTGRES_PASSWORD (and DATABASE_PASSWORD, ignored here)
                   name: manyfold-secrets
             probes:
-              # Both disabled for the UPGRADE BOOT ONLY -- pg_isready fails while
-              # pg_upgrade runs, and a restart part-way through corrupts --link.
               liveness:
-                enabled: false
+                enabled: true
                 custom: true
                 spec:
                   exec:
@@ -48,7 +46,7 @@ spec:
                   initialDelaySeconds: 30
                   periodSeconds: 10
               readiness:
-                enabled: false
+                enabled: true
                 custom: true
                 spec:
                   exec:
@@ -60,8 +58,7 @@ spec:
                 cpu: 50m
                 memory: 128Mi
               limits:
-                # Raised for the upgrade boot (reindex); back to 512Mi after.
-                memory: 2Gi
+                memory: 512Mi
         pod:
           enableServiceLinks: false
     service:
