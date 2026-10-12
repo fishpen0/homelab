@@ -1,0 +1,47 @@
+name: talos-validate
+
+on:
+  pull_request:
+    paths:
+      - "talos/**"
+      - "mise.toml"
+      - ".github/workflows/talos-validate.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          install_args: "talosctl github:postfinance/topf"
+
+      # CI never sees the real age key: swap the encrypted bundle for throwaway
+      # plaintext secrets, which topf reads as-is. Only the config shape is
+      # under test here.
+      - name: Generate throwaway secrets
+        working-directory: talos
+        run: talosctl gen secrets --force -o secrets.sops.yaml
+
+      - name: Render node configs
+        working-directory: talos
+        run: topf render -o output
+
+      # topf keeps going after a per-node template error, so check the count
+      # instead of trusting the exit code alone
+      - name: Validate node configs
+        working-directory: talos
+        run: |
+          expected=$(grep -c '^  - host:' topf.yaml)
+          actual=$(ls output/*.yaml | wc -l)
+          if [ "$actual" -ne "$expected" ]; then
+            echo "::error::rendered $actual configs, expected $expected"
+            exit 1
+          fi
+          for f in output/*.yaml; do
+            talosctl validate --config "$f" --mode metal
+          done

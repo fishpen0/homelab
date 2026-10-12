@@ -37,15 +37,27 @@
 
   // --- Custom Managers ---
   customManagers: [
-    // Track Talos version in talconfig.yaml
+    // Track Talos version in topf.yaml (written without "v" — topf adds it)
     {
       customType: "regex",
-      managerFilePatterns: ["/talos/talconfig\\.yaml$/"],
+      managerFilePatterns: ["/talos/topf\\.yaml$/"],
       matchStrings: [
-        "talosVersion:\\s*[\"']?(?<currentValue>v?\\d+\\.\\d+\\.\\d+)[\"']?",
+        "talosVersion:\\s*[\"']?(?<currentValue>\\d+\\.\\d+\\.\\d+)[\"']?",
       ],
       datasourceTemplate: "github-releases",
       depNameTemplate: "siderolabs/talos",
+      extractVersionTemplate: "^v(?<version>.+)$",
+      versioningTemplate: "semver",
+    },
+    // Track Kubernetes version in topf.yaml against the kubelet images Talos runs
+    {
+      customType: "regex",
+      managerFilePatterns: ["/talos/topf\\.yaml$/"],
+      matchStrings: [
+        "kubernetesVersion:\\s*[\"']?(?<currentValue>v\\d+\\.\\d+\\.\\d+[^\"'\\s]*)[\"']?",
+      ],
+      datasourceTemplate: "docker",
+      depNameTemplate: "ghcr.io/siderolabs/kubelet",
       versioningTemplate: "semver",
     },
   ],
@@ -67,38 +79,46 @@
       addLabels: ["renovate/longhorn", "needs-review"],
     },
     {
-      description: "Talos: manual cluster apply required",
+      // Merging changes nothing on the cluster, so the cluster is upgraded
+      // from the PR branch first and the PR merged after — main then always
+      // matches what the nodes run.
+      description: "Talos (cluster + talosctl client): upgrade cluster, then merge",
       matchPackageNames: ["siderolabs/talos"],
+      groupName: "talos",
       automerge: false,
+      ignoreUnstable: true,
       addLabels: ["renovate/talos", "needs-review"],
       prBodyNotes: [
-        "**Manual steps required after merging:**",
+        "**Upgrade the cluster from this branch BEFORE merging:**",
         "```bash",
-        "cd talos",
-        "",
-        "# 1. Regenerate node configs",
-        "SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig",
-        "",
-        "# 2. Push updated machine configs",
-        "talosctl apply-config -n 192.168.1.234 -f clusterconfig/turingpi-n1.yaml",
-        "talosctl apply-config -n 192.168.1.235 -f clusterconfig/turingpi-n2.yaml",
-        "talosctl apply-config -n 192.168.1.236 -f clusterconfig/turingpi-n3.yaml",
-        "talosctl apply-config -n 192.168.1.233 -f clusterconfig/turingpi-n4.yaml",
-        "",
-        "# 3. Upgrade OS — one node at a time, wait for health between each",
-        "talosctl upgrade -n 192.168.1.234 --image ghcr.io/siderolabs/talos:{{newVersion}}",
-        "talosctl health -n 192.168.1.234",
-        "talosctl upgrade -n 192.168.1.235 --image ghcr.io/siderolabs/talos:{{newVersion}}",
-        "talosctl health -n 192.168.1.235",
-        "talosctl upgrade -n 192.168.1.236 --image ghcr.io/siderolabs/talos:{{newVersion}}",
-        "talosctl health -n 192.168.1.236",
-        "talosctl upgrade -n 192.168.1.233 --image ghcr.io/siderolabs/talos:{{newVersion}}",
-        "talosctl health -n 192.168.1.233",
-        "",
-        "# 4. Upgrade Kubernetes control plane",
-        "talosctl upgrade-k8s -n 192.168.1.10",
+        "gh pr checkout {{{branchName}}} && cd talos",
+        "topf apply --dry-run   # review the config diff",
+        "topf upgrade --dry-run",
+        "topf upgrade           # control planes one at a time, drains each node",
         "```",
+        "Minor bumps: check the [Talos support matrix](https://docs.siderolabs.com/talos/latest/getting-started/support-matrix) for the running Kubernetes version, and the release notes for config schema changes (1.14 moved `machine.install` to `UnattendedInstallConfig`).",
       ],
+    },
+    {
+      description: "Kubernetes: run upgrade-k8s, then merge (never automerge)",
+      matchPackageNames: ["ghcr.io/siderolabs/kubelet"],
+      automerge: false,
+      ignoreUnstable: true,
+      addLabels: ["renovate/kubernetes", "needs-review"],
+      prBodyNotes: [
+        "**Upgrade the cluster BEFORE merging** — `topf apply` would otherwise roll static pods to this version without skew checks:",
+        "```bash",
+        "talosctl upgrade-k8s -n 192.168.1.10 --to {{{newVersion}}}",
+        "```",
+        "Check the [Talos support matrix](https://docs.siderolabs.com/talos/latest/getting-started/support-matrix) first for minor bumps.",
+      ],
+    },
+    {
+      description: "topf is pre-1.0: review all non-patch updates",
+      matchPackageNames: ["postfinance/topf"],
+      matchUpdateTypes: ["minor", "major"],
+      automerge: false,
+      addLabels: ["needs-review"],
     },
     {
       description: "Group monitoring stack updates",
