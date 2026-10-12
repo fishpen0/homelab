@@ -1,0 +1,11 @@
+[tools]
+"github:postfinance/topf" = "0.6.1"
+talosctl = "1.13.3"
+sops = "3.13.3"
+kubectl = "1.37.1"
+flux2 = "2.8.8"
+
+[env]
+# sops/topf can't find the age key without this and fail with an unhelpful
+# "no key could decrypt" error
+SOPS_AGE_KEY_FILE = "{{config_root}}/talos/age-key.txt"

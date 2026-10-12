@@ -78,7 +78,13 @@ Thumbs.db
 # which silently stopped matching when the tree moved to talos/, leaving the age
 # private key untracked but NOT ignored in a public repo.
 age-key.txt
+# Legacy talhelper files (superseded by topf; secrets bundle is now the
+# committed, SOPS-encrypted talos/secrets.sops.yaml). Generated configs hold
+# plaintext secrets.
 talsecret.sops.yaml
+talos/clusterconfig/
+# topf render output — plaintext secrets
+talos/output/
 
 # MCP environment files (contain sensitive tokens)
 .env.mcp
