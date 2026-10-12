@@ -26,7 +26,7 @@ spec:
           grimmory:
             image:
               repository: ghcr.io/grimmory-tools/grimmory
-              tag: "v3.3.2@sha256:8a3a046822dee460f3e67df5d548e3b9842057a54ed830026edb20ecc116c8ce"
+              tag: "v3.5.0@sha256:bf6fe21c6e247597f7869664a440b5a34242e2d2940575cae39c17bfaa66dc0b"
             env:
               # The entrypoint starts as root, then su-execs to this uid/gid.
               # Matches the SMB mount's uid/gid mapping (nobody:users, 99:100).
