@@ -23,7 +23,7 @@ spec:
           mariadb:
             image:
               repository: mariadb
-              tag: "11.8@sha256:24e76fcec8c003a0362d0dd53f4806e7e79458d7fdeaf47437760e19496f5a9c"
+              tag: "11.8@sha256:6422478cb8e159f080fb1d8ccf65101e26fe51385787fde7d16c3b165a331f15"
             env:
               MARIADB_DATABASE: grimmory
               MARIADB_USER: grimmory
