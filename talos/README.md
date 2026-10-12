@@ -1,111 +1,44 @@
-# Turing Pi Talos Cluster Configuration
+# Talos config (topf)
 
-## Current Status ✅
-- **Fresh Configuration**: All old cluster state has been cleaned up
-- **SOPS Encryption**: Properly configured with age encryption keys
-- **Longhorn Ready**: Configuration optimized for 4-node cluster with SSDs
-- **Best Practices**: Following current Talos recommendations
+Machine configs for the `turingpi` cluster are generated and applied with
+[topf](https://postfinance.github.io/topf). Tool versions are pinned in the repo
+root `mise.toml`; run `mise install` once.
 
-## Cluster Configuration
-- **Cluster Name**: turingpi
-- **Talos Version**: pinned in `talconfig.yaml` (bumped by Renovate)
-- **Nodes**: 4 nodes (3 control plane, 1 worker)
-- **Network**: 192.168.1.0/24 subnet
+| File | Purpose |
+|---|---|
+| `topf.yaml` | Cluster name/endpoint, Talos + Kubernetes versions, node list |
+| `schematic.yaml` | Image Factory schematic: `sbc-rockchip`/`turingrk1` overlay, `iscsi-tools`, `util-linux-tools` |
+| `secrets.sops.yaml` | Talos secrets bundle (`talosctl gen secrets` format), SOPS/age-encrypted |
+| `all/` | Patches applied to every node |
+| `control-plane/` | Patches applied to control planes only |
+| `age-key.txt` | age private key — **gitignored**, back it up outside the repo |
 
-### Node Details
-| Hostname | IP Address | Role | Install Disk |
-|----------|------------|------|--------------|
-| n1 | 192.168.1.224 | Control Plane | /dev/nvme0n1 |
-| n2 | 192.168.1.226 | Control Plane | /dev/nvme0n1 |
-| n3 | 192.168.1.223 | Control Plane | /dev/nvme0n1 |
-| n4 | 192.168.1.225 | Worker | /dev/nvme0n1 |
+Patches merge `all/` → `<role>/` → `node/<host>/`, in lexical order within each
+directory. `*.yaml.tpl` files are Go templates (`.Node.Host`, `.Node.IP`,
+`.Node.Role`, ...).
 
-## Longhorn Configuration
-- **Replica Count**: 2 (optimal for 4-node cluster)
-- **Storage Path**: /var/lib/longhorn (dedicated partition)
-- **Performance**: Optimized for SSD workloads
-- **Node Selector**: Worker nodes only (n4)
+## Nodes
 
-## Deployment Process
+| Host | IP | Role |
+|---|---|---|
+| n1 | 192.168.1.234 | control-plane |
+| n2 | 192.168.1.235 | control-plane |
+| n3 | 192.168.1.236 | control-plane |
+| n4 | 192.168.1.233 | worker |
 
-### 1. Apply Talos Configuration
+API endpoint: `https://192.168.1.10:6443` (Talos VIP on the control planes).
+
+## Common commands
+
 ```bash
-cd systems/turingpi/talos
-./deploy.sh
+topf render -o output    # render offline to output/ (gitignored — plaintext secrets)
+topf apply --dry-run     # diff against live nodes
+topf apply               # apply, one node at a time with stabilization
+topf upgrade --dry-run   # what a Talos upgrade would do
+topf upgrade             # rolling Talos upgrade (control planes one at a time)
+topf kubeconfig          # admin kubeconfig
+topf talosconfig         # talosctl client config
 ```
 
-### 2. Bootstrap Cluster
-```bash
-talosctl bootstrap -n 192.168.1.224
-```
-
-### 3. Get Kubernetes Access
-```bash
-talosctl kubeconfig -n 192.168.1.224
-```
-
-### 4. Setup Longhorn Prerequisites
-```bash
-./setup-longhorn.sh
-```
-
-### 5. Deploy Infrastructure
-The Flux infrastructure will automatically deploy Longhorn and other components.
-
-## File Structure
-```
-systems/turingpi/talos/
-├── talconfig.yaml          # Main Talos configuration
-├── talsecret.sops.yaml     # Encrypted cluster secrets
-├── age-key.txt             # Age encryption key (keep secure!)
-├── .sops.yaml              # SOPS configuration
-├── deploy.sh               # Deployment script
-├── setup-longhorn.sh       # Longhorn setup script
-├── clusterconfig/          # Generated Talos configs
-│   ├── turingpi-n1.yaml   # Node 1 config
-│   ├── turingpi-n2.yaml   # Node 2 config
-│   ├── turingpi-n3.yaml   # Node 3 config
-│   ├── turingpi-n4.yaml   # Node 4 config
-│   └── talosconfig        # Client config
-└── README.md               # This file
-```
-
-## Security Notes
-- **age-key.txt**: Contains private encryption key - keep secure!
-- **talsecret.sops.yaml**: Contains encrypted cluster secrets
-- **clusterconfig/**: Contains generated machine configs (gitignored)
-
-## Monitoring & Troubleshooting
-
-### Check Cluster Health
-```bash
-talosctl health -n 192.168.1.224
-```
-
-### Check Node Status
-```bash
-talosctl -n 192.168.1.224 get nodes
-```
-
-### View Logs
-```bash
-talosctl -n 192.168.1.224 logs -f
-```
-
-### Longhorn Status
-```bash
-kubectl get pods -n longhorn-system
-kubectl get nodes -l node-role.kubernetes.io/worker
-```
-
-## Next Steps After Deployment
-1. Verify all nodes are healthy
-2. Deploy Flux infrastructure
-3. Monitor Longhorn deployment
-4. Create storage classes and volumes
-5. Deploy applications
-
-## Support
-- **Talos Documentation**: https://www.talos.dev/
-- **Longhorn Documentation**: https://longhorn.io/docs/
-- **Turing Pi**: https://turingpi.com/
+Kubernetes upgrades go through `talosctl upgrade-k8s -n 192.168.1.10 --to <version>`
+first; bump `kubernetesVersion` in `topf.yaml` afterwards.

@@ -41,14 +41,14 @@ Goals for the proper fix (in order of preference):
      IPv4, so the CSR approver can whitelist just `192.168.1.0/24` (or the exact
      node IPs). No IPv6 moving parts at all.
    - **Deferred** — revisit when touching the IPv4 static-addressing work below,
-     since both are edits to the same talconfig network block.
+     since both are edits to the same Talos network patch (`talos/all/20-network.yaml.tpl`).
 
 Context for whoever picks this up:
 - Discovered during 2026-05-22 cluster recovery when nodes came up at fresh
   DHCPv4 IPs and the kubelet CSRs started including the routable IPv6.
 - `kubelet-csr-approver` providerIpPrefixes lives in
   `kubernetes/apps/kube-system/kubelet-csr-approver/app/helmrelease.yaml`.
-- Talos network config is per-node in `talos/talconfig.yaml`.
+- Talos network config is one template, `talos/all/20-network.yaml.tpl`; per-node IPs come from `nodes[].ip` in `talos/topf.yaml`.
 
 ### AT&T gateway IPv6 config (as observed 2026-05-31)
 
@@ -105,7 +105,7 @@ IP Passthrough Status   Off (private IP address)
 - AT&T gateways have a weak admin UI but *do* support DHCP reservations
   (MAC → IP binding). Preferred fix path:
   1. Reserve .233–.236 to the four node MACs in the gateway, **or**
-  2. Move nodes to **static IPv4** in talconfig outside the pool — e.g. use
+  2. Move nodes to **static IPv4** in `talos/topf.yaml` outside the pool — e.g. use
      `.11`–`.14` (below the .64 pool start, alongside the .10 VIP) so they can
      never collide with a DHCP lease. This is the more robust option since it
      doesn't depend on the flaky gateway honoring reservations across reboots.
@@ -113,15 +113,15 @@ IP Passthrough Status   Off (private IP address)
   covers any choice here, so only the IPv6 whitelist still needs narrowing.
 
 ### Added IPv4 steps
-5. [ ] Decide: gateway DHCP reservations vs static IPv4 in talconfig (prefer
+5. [ ] Decide: gateway DHCP reservations vs static IPv4 in topf.yaml (prefer
        static, outside the .64–.253 pool — e.g. .11–.14)
-6. [ ] If static: set `machine.network.interfaces[].addresses` per node in
-       talconfig.yaml, apply, regenerate kubeconfig if the VIP/endpoint changes
+6. [ ] If static: change `nodes[].ip` in `talos/topf.yaml`,
+       `topf apply`, regenerate kubeconfig if the VIP/endpoint changes
 7. [ ] Verify nodes survive a full power-cycle on the intended IPs before
        considering this closed
 
 ## Steps
 1. [ ] Decide between routable-stable vs ULA-only approach
-2. [ ] Implement (talconfig + apply, or DHCPv6 reservation, or sysctl)
+2. [ ] Implement (topf patch + `topf apply`, or DHCPv6 reservation, or sysctl)
 3. [ ] Narrow the `kubelet-csr-approver` IPv6 whitelist back down
 4. [ ] Document the chosen address plan in CLAUDE.md

@@ -1,49 +1,39 @@
-# Automated Talos Upgrades via Renovate
+# Automated Talos Upgrades
 
-Right now merging a Renovate Talos PR only updates `talconfig.yaml` — the actual
-node upgrade still requires running `talosctl upgrade` manually against each node.
-Goal: merging the PR should be the only required action.
+Upgrade orchestration is now handled by `topf upgrade` (rolling, control planes
+one at a time, drain + stabilization). Renovate PRs for `talosVersion` /
+`kubernetesVersion` tell you to upgrade the cluster from the PR branch and merge
+afterwards. What's still manual is *running* those commands.
 
-## Problem
+## Remaining goal
 
-The Renovate PR body template uses `talosctl apply-config`, which only pushes
-config changes. An OS upgrade requires `talosctl upgrade`, which reboots the node
-into the new installer image. These are two different operations and neither
-is automated today.
+Merging (or approving) a Renovate Talos/k8s PR should be the only required action.
 
-## Options
+## Option — CI-driven topf
 
-### Option A — Flux + Talos machine config image tag
-Talos supports in-cluster upgrades via the `upgrade` API. The installer image
-reference lives in the machine config (`talosImageURL` in talconfig.yaml). If
-talhelper generates the full image tag (e.g.
-`factory.talos.dev/installer/<hash>:v1.13.3`) and that config is applied to the
-node, Talos detects the image change and performs a self-upgrade + reboot
-automatically. This means:
-- Renovate bumps `talosVersion`
-- A CI job (GitHub Actions) runs `talhelper genconfig` + `talosctl apply-config`
-  on merge to main
-- Each node sees the new installer image tag in its config and self-upgrades
+A GitHub Actions job on the Renovate PR (or on a `deploy` label) runs:
 
-Requires: GitHub Actions runner with `talosctl` + age key access (via secret),
-network access to the cluster API (192.168.1.10:6443) — likely needs Tailscale
-in the Actions runner.
+```bash
+topf apply --confirm=false
+topf upgrade --confirm=false
+# k8s bumps: talosctl upgrade-k8s -n 192.168.1.10 --to <version>
+```
 
-### Option B — Talhelper GitHub Action
-`talhelper` has a first-party GitHub Action (`siderolabs/talos-action`) that can
-run `talosctl upgrade` as a post-merge CI step. Would remove the manual node loop
-entirely.
+then merges the PR on success.
 
-## Also needed
+Requires:
+- The age key as a GitHub secret (repo is public — scope it to a protected
+  environment with required reviewers).
+- Network access to the nodes (192.168.1.0/24) from the runner — Tailscale
+  GitHub Action with a subnet router, or a self-hosted runner on the LAN.
 
-- Fix Renovate config to add `ignoreUnstable: true` to the Talos package rule
-  so alpha/rc releases are never proposed (see current incident: nodes landed on
-  v1.13.0-alpha.2 because this filter was missing).
+## Done
+
+- [x] Rolling upgrade orchestration (`topf upgrade`)
+- [x] Renovate `ignoreUnstable: true` for `siderolabs/talos` and the kubelet
+- [x] PR validation: `.github/workflows/talos-validate.yaml` renders + validates
 
 ## Acceptance criteria
 
-- [ ] Merging a Renovate Talos version bump PR triggers CI
-- [ ] CI runs `talhelper genconfig` and applies/upgrades all 4 nodes in rolling order
-- [ ] Control planes upgraded one at a time (etcd quorum preserved)
-- [ ] Worker upgraded last
-- [ ] Renovate `ignoreUnstable: true` added for `siderolabs/talos`
+- [ ] Approving a Renovate Talos/k8s PR triggers the cluster upgrade from CI
+- [ ] PR only merges after the upgrade succeeds (main always matches the cluster)
