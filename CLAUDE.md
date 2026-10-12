@@ -40,7 +40,7 @@ GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. 
 
 ## Cluster Overview
 
-- **OS**: Talos Linux (immutable, no SSH — managed via `talosctl`). Version is pinned in `talos/talconfig.yaml` and bumped by Renovate.
+- **OS**: Talos Linux (immutable, no SSH — managed via `talosctl`). Talos and Kubernetes versions are pinned in `talos/topf.yaml` and bumped by Renovate. Configs are rendered and applied with [topf](https://github.com/postfinance/topf).
 - **Cluster name**: `turingpi`
 - **API endpoint**: `https://192.168.1.10:6443` (Talos native VIP, floats across n1–n3)
 - **Nodes**: n1–n3 are control planes (scheduling allowed), n4 is the worker
@@ -63,10 +63,18 @@ homelab/
 │       ├── manyfold/                 # 3D print model library (will fold into default later)
 │       ├── observability/            # kube-prometheus-stack, Loki, Alloy
 │       └── tailscale/                # Tailscale operator (VPN ingress class)
-├── talos/                            # Talos cluster config (talconfig.yaml, SOPS secrets)
+├── talos/                            # Talos cluster config, managed by topf
+│   ├── topf.yaml                     # Cluster + nodes, Talos/k8s versions
+│   ├── schematic.yaml                # Image Factory schematic (RK1 overlay + extensions)
+│   ├── secrets.sops.yaml             # Talos secrets bundle (SOPS-encrypted)
+│   ├── all/                          # Patches for every node (*.yaml.tpl = Go template)
+│   └── control-plane/                # Patches for control planes only
 ├── tofu/                             # OpenTofu (Terraform) — currently manages Flux bootstrap
-└── TODO/                             # Work tracking
+├── TODO/                             # Work tracking
+└── mise.toml                         # Pinned CLI tools (topf, talosctl, sops, ...) + SOPS_AGE_KEY_FILE
 ```
+
+CLI tools are pinned in `mise.toml` and bumped by Renovate. Run `mise install` once; mise also sets `SOPS_AGE_KEY_FILE` for anything run inside the repo.
 
 Each app dir follows: `<category>/<app>/{ks.yaml, kustomization.yaml, app/}`. Infrastructure components live in their own namespace (cert-manager, longhorn-system, etc.); user-facing apps go in `default` per bbck/onedr0p homelab convention.
 
@@ -118,10 +126,12 @@ talosctl bootstrap -n 192.168.1.234
 talosctl kubeconfig -n 192.168.1.10
 ```
 
-### Regenerate Talos node configs (after editing talconfig.yaml)
+### Change Talos node config
 ```bash
 cd talos
-talhelper genconfig
+topf render -o output       # offline render to talos/output/ (gitignored, plaintext secrets)
+topf apply --dry-run        # diff against the live nodes
+topf apply                  # confirms per node, waits for each to stabilize
 ```
 
 ### OpenTofu
@@ -197,16 +207,20 @@ Examples in this repo:
 
 Downstream apps that consume the CR (e.g. an `ExternalSecret` referencing the `ClusterSecretStore`) should `dependsOn` the `-config` Kustomization, not just the operator one — otherwise their own CRs may apply before the SecretStore/Issuer is Ready.
 
-## talhelper genconfig — SOPS Key Required
+## Talos config with topf
 
-`talhelper genconfig` will fail with a SOPS decryption error unless the age key is explicitly provided:
+- **SOPS key:** the age key is at `talos/age-key.txt` (gitignored). `mise.toml` exports `SOPS_AGE_KEY_FILE` for it; outside mise, sops/topf fail with a "no key could decrypt" error.
+- **Patch layout:** `all/` → `control-plane/` (or `worker/`) → `node/<host>/`, lexical order within each dir, later wins. Files ending `.yaml.tpl` are Go templates with `.Node.Host`, `.Node.IP`, `.Node.Role` — use them instead of copying per-node blocks.
+- **Talos < 1.14 config shape:** patches use the classic `machine.*` fields. Talos 1.14 moves e.g. `machine.install` to an `UnattendedInstallConfig` document (the two are mutually exclusive); branch on `semverCompare ">= 1.14.0-0" .Node.RuntimeData.TalosVersion` while upgrading.
+- **CI:** `.github/workflows/talos-validate.yaml` renders every node with throwaway secrets and runs `talosctl validate` on PRs touching `talos/`.
 
-```bash
-cd talos
-SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig
-```
+### Talos / Kubernetes upgrades: upgrade the cluster, then merge
 
-The age key is at `talos/age-key.txt` (gitignored). Without `SOPS_AGE_KEY_FILE` set, the command silently finds no valid decryption key and exits with error.
+Merging a version bump changes nothing on the nodes, so the cluster is upgraded from the PR branch first and the PR merged after. That way `main` always matches what's running. (Merging first is how the nodes ended up on v1.13.0-alpha.2 while git said v1.13.3.)
+
+- **Talos** (`talosVersion`): `topf upgrade --dry-run`, then `topf upgrade` (control planes one at a time, drains each node).
+- **Kubernetes** (`kubernetesVersion`): `talosctl upgrade-k8s -n 192.168.1.10 --to <version>`. Never bump the field and `topf apply` — that rolls static pods without skew checks.
+- Check the [Talos support matrix](https://docs.siderolabs.com/talos/latest/getting-started/support-matrix) for minor bumps.
 
 ## NAS-backed SMB shares (Unraid)
 
@@ -229,21 +243,18 @@ No credential work per share — `unraid-k8s-user` has RW on the whole share. A 
 
 1. **API server → metrics-server** (aggregated API): Secured via cert-manager. The `selfsigned-cluster-issuer` ClusterIssuer issues a cert for the metrics-server service; cert-manager's cainjector injects the CA bundle into the `APIService` resource so the API server trusts it. Configured in the metrics-server HelmRelease `values.tls` block.
 
-2. **metrics-server → kubelet** (scraping node stats): Secured via kubelet TLS bootstrap + `kubelet-csr-approver`. Enabled by `serverTLSBootstrap: true` in `talconfig.yaml` (under `machine.kubelet.extraConfig`). Kubelets submit `CertificateSigningRequest` objects; `kubelet-csr-approver` auto-approves them. This replaces `--kubelet-insecure-tls`.
+2. **metrics-server → kubelet** (scraping node stats): Secured via kubelet TLS bootstrap + `kubelet-csr-approver`. Enabled by `serverTLSBootstrap: true` in `talos/all/10-kubelet.yaml` (under `machine.kubelet.extraConfig`). Kubelets submit `CertificateSigningRequest` objects; `kubelet-csr-approver` auto-approves them. This replaces `--kubelet-insecure-tls`.
 
 **cert-manager cannot fix connection #2** — kubelet serving CSRs are issued by the kubelet process on each node, not by in-cluster workloads. Both components are needed for full hardening.
 
 ### Applying Talos config changes safely
 
-After editing `talconfig.yaml`, regenerate and apply **before** pushing Kubernetes changes that depend on the new config (e.g. removing `--kubelet-insecure-tls`):
+After editing patches under `talos/`, apply **before** pushing Kubernetes changes that depend on the new config (e.g. removing `--kubelet-insecure-tls`):
 
 ```bash
 cd talos
-SOPS_AGE_KEY_FILE=age-key.txt talhelper genconfig
-talosctl apply-config -n 192.168.1.234 -f clusterconfig/turingpi-n1.yaml
-talosctl apply-config -n 192.168.1.235 -f clusterconfig/turingpi-n2.yaml
-talosctl apply-config -n 192.168.1.236 -f clusterconfig/turingpi-n3.yaml
-talosctl apply-config -n 192.168.1.233 -f clusterconfig/turingpi-n4.yaml
+topf apply --dry-run
+topf apply
 ```
 
 Verify kubelet CSRs appear after applying:
@@ -251,6 +262,6 @@ Verify kubelet CSRs appear after applying:
 kubectl get csr   # expect 4 Pending with signerName: kubernetes.io/kubelet-serving
 ```
 
-### kubelet patch merging in talconfig.yaml
+### kubelet patch merging
 
-When adding new `machine.kubelet` config, merge it into the existing `baselonghorn` patch anchor (which already touches `machine.kubelet.extraMounts`). Do not create a separate patch for the same top-level key — Talos merges patch keys, but having two patches that both set `machine.kubelet` can cause unexpected behavior depending on merge strategy.
+When adding new `machine.kubelet` config, add it to `talos/all/10-kubelet.yaml` (which already holds `extraMounts`, `nodeIP`, `extraConfig`). Do not create a separate patch for the same top-level key — Talos merges patch keys, but having two patches that both set `machine.kubelet` can cause unexpected behavior depending on merge strategy.
