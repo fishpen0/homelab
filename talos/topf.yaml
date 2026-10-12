@@ -1,7 +1,7 @@
 clusterName: turingpi
 clusterEndpoint: https://192.168.1.10:6443
 # No "v" prefix: topf builds the installer tag as ":v<talosVersion>"
-talosVersion: 1.13.3
+talosVersion: 1.13.11
 # Bump only after `talosctl upgrade-k8s` has run, or `topf apply` reverts it
 kubernetesVersion: v1.36.0-alpha.1
 schematicId: "@schematic.yaml"
