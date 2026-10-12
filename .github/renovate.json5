@@ -65,11 +65,28 @@
   // --- Package Rules ---
   packageRules: [
     {
-      description: "Automerge digest and patch updates",
-      matchUpdateTypes: ["digest", "patch"],
+      description: "Automerge patch updates",
+      matchUpdateTypes: ["patch"],
       automerge: true,
       automergeType: "branch",
       minimumReleaseAge: "3 days", // guard against yanked releases
+    },
+    {
+      // A digest bump on a mutable tag is an upstream rebuild, not a release:
+      // every rebuild resets the age clock, so an age gate may never pass.
+      description: "Automerge digest updates (no age gate)",
+      matchUpdateTypes: ["digest"],
+      automerge: true,
+      automergeType: "branch",
+      minimumReleaseAge: null,
+    },
+    {
+      // Longhorn-backed, Recreate strategy: a merge restarts the database, so
+      // check volume health first.
+      description: "Databases: manual review for digest updates",
+      matchPackageNames: ["/(^|/)postgres$/", "/(^|/)mariadb$/"],
+      matchUpdateTypes: ["digest"],
+      automerge: false,
     },
     {
       description: "Longhorn: manual review required",
