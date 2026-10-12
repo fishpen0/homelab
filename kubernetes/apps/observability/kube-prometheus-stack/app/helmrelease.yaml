@@ -110,7 +110,13 @@ spec:
           memory: 32Mi
         limits:
           cpu: 200m
-          memory: 128Mi
+          memory: 256Mi
+      livenessProbe:
+        initialDelaySeconds: 10
+        timeoutSeconds: 5
+      readinessProbe:
+        initialDelaySeconds: 10
+        timeoutSeconds: 5
 
     kubeStateMetrics:
       enabled: true
