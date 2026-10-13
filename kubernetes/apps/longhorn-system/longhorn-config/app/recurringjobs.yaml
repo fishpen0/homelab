@@ -1,0 +1,16 @@
+---
+# Local snapshots only: no backup target is configured. A PVC opts in with the
+# labels recurring-job.longhorn.io/source=enabled and
+# recurring-job.longhorn.io/snapshot-daily=enabled.
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-daily
+  namespace: longhorn-system
+spec:
+  cron: "0 3 * * *"
+  task: snapshot
+  groups: []
+  retain: 7
+  concurrency: 1
+  labels: {}
