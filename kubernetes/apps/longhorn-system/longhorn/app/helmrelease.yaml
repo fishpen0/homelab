@@ -37,7 +37,7 @@ spec:
       storageReservedPercentageForDefaultDisk: 10
       v2DataEngine: true
       # Monitoring
-      defaultDataPath: /var/lib/longhorn
+      defaultDataPath: /var/mnt/longhorn
     persistence:
       defaultClassReplicaCount: 2
       defaultClass: true
