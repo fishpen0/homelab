@@ -23,7 +23,8 @@ spec:
       # Exposed over Tailscale via the userspace Ingress in ../../ingress, not the
       # service-level expose annotation (which spawns a privileged proxy).
       prometheusSpec:
-        # Lets the Unraid Alloy push host metrics over the tailnet.
+        # Lets the Unraid Alloy push host metrics over the tailnet, and Tempo's
+        # metrics-generator push span metrics.
         enableRemoteWriteReceiver: true
         retention: 15d
         retentionSize: 18GB
@@ -95,6 +96,17 @@ spec:
           isDefault: false
           jsonData:
             maxLines: 5000
+        - name: Tempo
+          type: tempo
+          uid: tempo
+          url: http://tempo.observability.svc.cluster.local:3200
+          access: proxy
+          isDefault: false
+          jsonData:
+            serviceMap:
+              datasourceUid: prometheus
+            nodeGraph:
+              enabled: true
       sidecar:
         datasources:
           enabled: true
