@@ -31,9 +31,27 @@ kind: PersistentVolumeClaim
 metadata:
   name: grimmory-mariadb-data
   namespace: default
+  labels:
+    # Daily local Longhorn snapshots (longhorn-config RecurringJob): an
+    # in-place rollback point if a MariaDB upgrade goes wrong.
+    recurring-job.longhorn.io/source: enabled
+    recurring-job.longhorn.io/snapshot-daily: enabled
 spec:
   accessModes: ["ReadWriteOnce"]
   storageClassName: longhorn
   resources:
     requests:
       storage: 5Gi
+---
+# mariadb-dump output from the pre-upgrade Helm hook in mariadb.yaml.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grimmory-mariadb-backups
+  namespace: default
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi

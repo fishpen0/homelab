@@ -1,0 +1,70 @@
+name: mariadb-upgrade-rehearsal
+
+# Required status check on main, so it runs on every PR (a path-filtered
+# required check never reports and blocks unrelated PRs) and no-ops unless the
+# MariaDB setup changed. renovate/** pushes cover branch automerge, which never
+# opens a PR.
+on:
+  pull_request:
+  push:
+    branches: ["renovate/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  rehearse:
+    # Single job on purpose: a skipped job counts as passing for a required
+    # check, so a separate change-detection job failing would let PRs through.
+    name: mariadb-upgrade-rehearsal
+    # The RK1 nodes are arm64; rehearse on the same architecture so a missing
+    # arm64 image fails here instead of on the cluster.
+    runs-on: ubuntu-24.04-arm
+    env:
+      MANIFESTS: kubernetes/apps/grimmory/grimmory/app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Detect MariaDB changes
+        id: diff
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base=${PR_BASE:-$(git merge-base origin/main HEAD)}
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          if git diff --quiet "$base" HEAD -- \
+            "$MANIFESTS/mariadb.yaml" "$MANIFESTS/grimmory.yaml" \
+            .github/scripts/mariadb-upgrade-rehearsal.sh \
+            .github/workflows/mariadb-upgrade-rehearsal.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No MariaDB changes since $base; nothing to rehearse."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        if: steps.diff.outputs.changed == 'true'
+        with:
+          install_args: "yq"
+
+      - name: Rehearse upgrade
+        if: steps.diff.outputs.changed == 'true'
+        working-directory: ${{ runner.temp }}
+        env:
+          BASE: ${{ steps.diff.outputs.base }}
+        run: |
+          git -C "$GITHUB_WORKSPACE" show "$BASE:$MANIFESTS/mariadb.yaml" > mariadb-base.yaml
+          "$GITHUB_WORKSPACE/.github/scripts/mariadb-upgrade-rehearsal.sh" \
+            mariadb-base.yaml \
+            "$GITHUB_WORKSPACE/$MANIFESTS/mariadb.yaml" \
+            "$GITHUB_WORKSPACE/$MANIFESTS/grimmory.yaml"
+
+      - name: Upload logs
+        if: always() && steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rehearsal-logs
+          path: ${{ runner.temp }}/app-*.log
+          if-no-files-found: ignore

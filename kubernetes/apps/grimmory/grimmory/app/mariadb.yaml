@@ -27,6 +27,10 @@ spec:
             env:
               MARIADB_DATABASE: grimmory
               MARIADB_USER: grimmory
+              # Without this the entrypoint skips mariadb-upgrade on a version
+              # bump, leaving system tables at the version that created the
+              # data dir. It backs up the mysql schema into the data dir first.
+              MARIADB_AUTO_UPGRADE: "1"
             envFrom:
               # Provides MARIADB_PASSWORD + MARIADB_ROOT_PASSWORD (and
               # DATABASE_PASSWORD, ignored here).
@@ -57,6 +61,60 @@ spec:
                 memory: 1Gi
         pod:
           enableServiceLinks: false
+      # Logical dump of the running (old) server before every Helm upgrade, so
+      # an image bump always has a restore point that loads into any version.
+      # Renovate bumps this image alongside the server's; a newer client dumping
+      # an older server is supported.
+      dump:
+        type: job
+        annotations:
+          helm.sh/hook: pre-upgrade
+          # Keep the last run's Job/logs around until the next upgrade.
+          helm.sh/hook-delete-policy: before-hook-creation
+        job:
+          backoffLimit: 2
+          activeDeadlineSeconds: 240
+        containers:
+          dump:
+            image:
+              repository: mariadb
+              tag: "11.8@sha256:6422478cb8e159f080fb1d8ccf65101e26fe51385787fde7d16c3b165a331f15"
+            command: ["/bin/bash", "-c"]
+            args:
+              - |
+                set -euo pipefail
+                # Set DUMP_REQUIRED=false to let an upgrade through when the
+                # server is down (e.g. to ship a fix for a crashlooping DB).
+                printf '[client]\nhost=grimmory-mariadb\nuser=root\npassword=%s\n' \
+                  "$MARIADB_ROOT_PASSWORD" > /tmp/my.cnf
+                if ! version=$(mariadb --defaults-file=/tmp/my.cnf -N -e 'SELECT VERSION()'); then
+                  [ "$DUMP_REQUIRED" = "false" ] && { echo "server unreachable, skipping dump"; exit 0; }
+                  echo "server unreachable, refusing to upgrade without a dump" >&2
+                  exit 1
+                fi
+                out="/backups/grimmory-$(date -u +%Y%m%dT%H%M%SZ)-${version%%-*}.sql.zst"
+                mariadb-dump --defaults-file=/tmp/my.cnf --single-transaction \
+                  --routines --triggers --events --databases grimmory \
+                  | zstd -q > "$out.tmp"
+                mv "$out.tmp" "$out"
+                echo "wrote $out ($(stat -c %s "$out") bytes)"
+                ls -1t /backups/*.sql.zst | tail -n +11 | xargs -r rm -v --
+            env:
+              DUMP_REQUIRED: "true"
+              MARIADB_ROOT_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: grimmory-secrets
+                    key: MARIADB_ROOT_PASSWORD
+            probes:
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
+              startup:
+                enabled: false
+        pod:
+          enableServiceLinks: false
     service:
       mariadb:
         controller: mariadb
@@ -66,5 +124,13 @@ spec:
     persistence:
       data:
         existingClaim: grimmory-mariadb-data
-        globalMounts:
-          - path: /var/lib/mysql
+        advancedMounts:
+          mariadb:
+            mariadb:
+              - path: /var/lib/mysql
+      backups:
+        existingClaim: grimmory-mariadb-backups
+        advancedMounts:
+          dump:
+            dump:
+              - path: /backups
