@@ -227,7 +227,7 @@ Merging a version bump changes nothing on the nodes, so the cluster is upgraded 
 - `MARIADB_AUTO_UPGRADE: "1"` must stay set — without it the entrypoint silently skips `mariadb-upgrade` on image bumps.
 - A `pre-upgrade` Helm hook Job (`dump` controller in `mariadb.yaml`) runs `mariadb-dump` against the live server before every Helm upgrade, keeping the last 10 dumps on the `grimmory-mariadb-backups` PVC. It blocks the upgrade if the server is unreachable; set its `DUMP_REQUIRED: "false"` to ship a fix for a down DB.
 - `grimmory-mariadb-data` opts into the `snapshot-daily` Longhorn RecurringJob (`longhorn-system/longhorn-config`, local snapshots, retain 7).
-- Renovate only offers LTS series (`11.8`, then `N.3`). The `mariadb-upgrade-rehearsal` workflow upgrades a Flyway-seeded data dir from the PR's base tag to its head tag on an arm64 runner; run `.github/scripts/mariadb-upgrade-rehearsal.sh` locally with OrbStack to reproduce.
+- Renovate tracks every MariaDB release; do not add `allowedVersions` or series restrictions to Renovate rules unless asked. The `mariadb-upgrade-rehearsal` workflow upgrades a Flyway-seeded data dir from the PR's base tag to its head tag on an arm64 runner; run `.github/scripts/mariadb-upgrade-rehearsal.sh` locally with OrbStack to reproduce.
 
 ## NAS-backed SMB shares (Unraid)
 

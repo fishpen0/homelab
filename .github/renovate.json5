@@ -89,11 +89,8 @@
       automerge: false,
     },
     {
-      // MariaDB ships rolling releases between yearly LTS series. 11.8 was the
-      // last old-style LTS; from 12.x on, N.3 is the LTS (12.3, 13.3, ...).
-      description: "MariaDB: LTS series only",
+      description: "MariaDB: upgrade safety notes",
       matchPackageNames: ["/(^|/)mariadb$/"],
-      allowedVersions: "/^(11\\.8|\\d+\\.3)(\\.\\d+)?$/",
       prBodyNotes: [
         "The `mariadb-upgrade-rehearsal` check upgrades a Flyway-seeded data dir from the base tag to this one on arm64. A pre-upgrade Helm hook dumps the live DB to the `grimmory-mariadb-backups` PVC before rollout, and `grimmory-mariadb-data` has daily Longhorn snapshots.",
       ],
