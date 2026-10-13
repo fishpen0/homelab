@@ -7,3 +7,4 @@ resources:
   - ingress
   - flux-monitoring
   - longhorn-dashboard
+  - unraid-dashboard
