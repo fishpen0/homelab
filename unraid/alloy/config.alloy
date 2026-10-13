@@ -1,0 +1,77 @@
+// Alloy on Unraid (box, 192.168.1.98): ships docker logs + host metrics to the
+// cluster over the tailnet. See README.md for the container mounts/extra-hosts this needs.
+
+// ---- Logs: every docker container, via the docker socket ----
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "app"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  labels     = { source = "unraid", host = "box", job = "docker" }
+  forward_to = [loki.write.cluster.receiver]
+}
+
+// ---- Logs: Unraid syslog ----
+local.file_match "syslog" {
+  path_targets = [{ __path__ = "/host/var/log/syslog", job = "syslog", source = "unraid", host = "box" }]
+}
+
+loki.source.file "syslog" {
+  targets    = local.file_match.syslog.targets
+  forward_to = [loki.write.cluster.receiver]
+}
+
+loki.write "cluster" {
+  endpoint {
+    url = "https://loki.ferret-pound.ts.net/loki/api/v1/push"
+  }
+}
+
+// ---- Metrics: host (node_exporter equivalent) ----
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host/root"
+}
+
+discovery.relabel "host" {
+  targets = prometheus.exporter.unix.host.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = "box"
+  }
+  rule {
+    target_label = "source"
+    replacement  = "unraid"
+  }
+}
+
+prometheus.scrape "host" {
+  targets         = discovery.relabel.host.output
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.cluster.receiver]
+}
+
+prometheus.remote_write "cluster" {
+  endpoint {
+    url = "https://prometheus.ferret-pound.ts.net/api/v1/write"
+  }
+}
