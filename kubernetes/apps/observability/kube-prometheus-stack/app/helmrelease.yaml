@@ -23,6 +23,8 @@ spec:
       # Exposed over Tailscale via the userspace Ingress in ../../ingress, not the
       # service-level expose annotation (which spawns a privileged proxy).
       prometheusSpec:
+        # Lets the Unraid Alloy push host metrics over the tailnet.
+        enableRemoteWriteReceiver: true
         retention: 15d
         retentionSize: 18GB
         storageSpec:

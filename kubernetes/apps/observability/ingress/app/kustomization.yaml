@@ -3,4 +3,5 @@ kind: Kustomization
 resources:
   - ingress-grafana.yaml
   - ingress-prometheus.yaml
+  - ingress-loki.yaml
   - ingress-alertmanager.yaml
