@@ -59,3 +59,6 @@ spec:
 
     serviceMonitor:
       enabled: true
+      # Prometheus only selects ServiceMonitors carrying this release label.
+      additionalLabels:
+        release: kube-prometheus-stack
