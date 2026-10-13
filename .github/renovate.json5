@@ -167,5 +167,12 @@
       automerge: false,
       addLabels: ["renovate/major", "needs-review"],
     },
+    {
+      // Keep last: something outside this file (Mend-hosted config) was
+      // holding non-patch updates behind dependency dashboard approval.
+      description: "Never hold updates for dashboard approval",
+      matchPackageNames: ["*"],
+      dependencyDashboardApproval: false,
+    },
   ],
 }
