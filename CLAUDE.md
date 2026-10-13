@@ -46,7 +46,7 @@ GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. 
 - **Nodes**: n1–n3 are control planes (scheduling allowed), n4 is the worker
 - **Node IPs**: n1=192.168.1.234, n2=192.168.1.235, n3=192.168.1.236, n4=192.168.1.233
 - **CNI**: Flannel
-- **Storage**: Longhorn (distributed block storage, replicas=2, worker nodes only)
+- **Storage**: Longhorn (distributed block storage, replicas=2). Every node — control planes included — has a `/var/lib/longhorn` disk and holds replicas; hard anti-affinity keeps a volume's two replicas on different nodes, so a single node reboot leaves volumes `degraded` until the rebuild finishes. Wait for all volumes to be `healthy` before taking down another node.
 - **GitOps**: Flux v2 watches `kubernetes/`
 
 ## Repository Structure
