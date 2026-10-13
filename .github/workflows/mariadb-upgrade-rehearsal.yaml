@@ -19,7 +19,7 @@ jobs:
     name: mariadb-upgrade-rehearsal
     # The RK1 nodes are arm64; rehearse on the same architecture so a missing
     # arm64 image fails here instead of on the cluster.
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     env:
       MANIFESTS: kubernetes/apps/grimmory/grimmory/app
     steps:
