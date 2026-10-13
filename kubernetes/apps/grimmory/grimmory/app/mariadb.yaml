@@ -23,7 +23,7 @@ spec:
           mariadb:
             image:
               repository: mariadb
-              tag: "11.8@sha256:6422478cb8e159f080fb1d8ccf65101e26fe51385787fde7d16c3b165a331f15"
+              tag: "13.0@sha256:f1bba652ba57bea3099ca2fe1af692af537c27d96e0bcde39dce29e2ba1ec4f3"
             env:
               MARIADB_DATABASE: grimmory
               MARIADB_USER: grimmory
@@ -78,7 +78,7 @@ spec:
           dump:
             image:
               repository: mariadb
-              tag: "11.8@sha256:6422478cb8e159f080fb1d8ccf65101e26fe51385787fde7d16c3b165a331f15"
+              tag: "13.0@sha256:f1bba652ba57bea3099ca2fe1af692af537c27d96e0bcde39dce29e2ba1ec4f3"
             command: ["/bin/bash", "-c"]
             args:
               - |
