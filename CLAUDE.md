@@ -238,7 +238,7 @@ Longhorn's data disk is `/var/mnt/longhorn`, a directory on the EPHEMERAL partit
 
 - Longhorn refuses two disks on the same filesystem ("same file system ID"), so moving a node's disk path means: evict and remove the old disk first, then add the new one — evicted replicas land on the other nodes. One node at a time, wait for all volumes `healthy` between nodes.
 - Longhorn does not create a missing disk directory; a new node needs the `UserVolumeConfig` applied before its disk is added.
-- Longhorn does not rebalance replicas by itself (`replica-auto-balance` is off), so after node-by-node maintenance replicas can end up uneven across nodes.
+- `replica-auto-balance` is `least-effort`, so replicas spread back onto an emptied node after node-by-node maintenance. It is a Helm `defaultSettings` value, which only seeds new installs; changing it on a running cluster also means patching the `replica-auto-balance` Setting CR.
 
 ## NAS-backed SMB shares (Unraid)
 

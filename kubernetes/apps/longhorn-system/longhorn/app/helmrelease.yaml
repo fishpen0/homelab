@@ -19,6 +19,10 @@ spec:
   values:
     defaultSettings:
       defaultReplicaCount: 2
+      # Spreads replicas onto nodes that have none (n3 ended up empty after the
+      # /var/mnt/longhorn disk move). Helm defaultSettings only seed new installs;
+      # the live Setting CR was patched to match.
+      replicaAutoBalance: least-effort
       backupstorePollInterval: 300
       # All four nodes are identical NVMe TuringPi modules — no need to gate disk
       # creation on labels. Default-true was cargo-culted from heterogeneous-cluster
