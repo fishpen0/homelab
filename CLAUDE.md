@@ -46,7 +46,7 @@ GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. 
 - **Nodes**: n1–n3 are control planes (scheduling allowed), n4 is the worker
 - **Node IPs**: n1=192.168.1.234, n2=192.168.1.235, n3=192.168.1.236, n4=192.168.1.233
 - **CNI**: Flannel
-- **Storage**: Longhorn (distributed block storage, replicas=2). Every node — control planes included — has a `/var/lib/longhorn` disk and holds replicas; hard anti-affinity keeps a volume's two replicas on different nodes, so a single node reboot leaves volumes `degraded` until the rebuild finishes. Wait for all volumes to be `healthy` before taking down another node.
+- **Storage**: Longhorn (distributed block storage, replicas=2). Every node — control planes included — has a `/var/mnt/longhorn` disk (a `UserVolumeConfig` directory volume on EPHEMERAL, `talos/all/30-longhorn-volume.yaml`) and can hold replicas; Longhorn itself hardcodes `/var/lib/longhorn/{engine-binaries,metadata,unix-domain-socket,logs}` for its engine-image/instance-manager pods, so that path stays and is not a data disk; hard anti-affinity keeps a volume's two replicas on different nodes, so a single node reboot leaves volumes `degraded` until the rebuild finishes. Wait for all volumes to be `healthy` before taking down another node.
 - **GitOps**: Flux v2 watches `kubernetes/`
 
 ## Repository Structure
@@ -211,7 +211,10 @@ Downstream apps that consume the CR (e.g. an `ExternalSecret` referencing the `C
 
 - **SOPS key:** the age key is at `talos/age-key.txt` (gitignored). `mise.toml` exports `SOPS_AGE_KEY_FILE` for it; outside mise, sops/topf fail with a "no key could decrypt" error.
 - **Patch layout:** `all/` → `control-plane/` (or `worker/`) → `node/<host>/`, lexical order within each dir, later wins. Files ending `.yaml.tpl` are Go templates with `.Node.Host`, `.Node.IP`, `.Node.Role` — use them instead of copying per-node blocks.
-- **Talos < 1.14 config shape:** patches use the classic `machine.*` fields. Talos 1.14 moves e.g. `machine.install` to an `UnattendedInstallConfig` document (the two are mutually exclusive); branch on `semverCompare ">= 1.14.0-0" .Node.RuntimeData.TalosVersion` while upgrading.
+- **Config shape (Talos 1.14+):** the base config topf generates now contains the multi-document kinds (`KubeletConfig`, `KubeNodeConfig`, `ResolverConfig`, `UnattendedInstallConfig`, ...), and a v1alpha1 patch that sets the same thing is rejected (`already set in v1alpha1 config`). Patch the new kinds: `machine.install` → `UnattendedInstallConfig`, `machine.network.nameservers` → `ResolverConfig`, `machine.kubelet.*` → `KubeletConfig` + `KubeNodeConfig`, `allowSchedulingOnControlPlanes` → `KubeNodeConfig` (`taints` entry with `$patch: delete`). `machine.kubelet.extraMounts` has no replacement. The install, kubelet and scheduling patches are still `.tpl` files that branch on `semverCompare ">= 1.14.0-0" (.Node.RuntimeData.TalosVersion | default "1.14.0")` (RuntimeData is empty on offline renders, hence the default) — the pre-1.14 branches are dead now that all nodes run 1.14 and can be deleted.
+- **Applying after an upgrade:** `topf apply --dry-run` against nodes that still hold the old single-document config shows a large diff (every setting re-expressed as separate documents), not just your change. Apply node by node and check `kubectl get nodes` / pods between each.
+- **Non-interactive topf:** `topf upgrade`/`apply` auto-decline their confirmation prompt when stdin is not a terminal; pass the global `--confirm=false` (before the subcommand). `apply` has no `--progress` flag (`upgrade` does).
+- **age key in a worktree:** `talos/age-key.txt` is gitignored, so a git worktree lacks it; symlink the main checkout's key into the worktree's `talos/`.
 - **CI:** `.github/workflows/talos-validate.yaml` renders every node with throwaway secrets and runs `talosctl validate` on PRs touching `talos/`.
 
 ### Talos / Kubernetes upgrades: upgrade the cluster, then merge
@@ -228,6 +231,14 @@ Merging a version bump changes nothing on the nodes, so the cluster is upgraded 
 - A `pre-upgrade` Helm hook Job (`dump` controller in `mariadb.yaml`) runs `mariadb-dump` against the live server before every Helm upgrade, keeping the last 10 dumps on the `grimmory-mariadb-backups` PVC. It blocks the upgrade if the server is unreachable; set its `DUMP_REQUIRED: "false"` to ship a fix for a down DB.
 - `grimmory-mariadb-data` opts into the `snapshot-daily` Longhorn RecurringJob (`longhorn-system/longhorn-config`, local snapshots, retain 7).
 - The `mariadb-upgrade-rehearsal` workflow upgrades a Flyway-seeded data dir from the PR's base tag to its head tag on an arm64 runner; run `.github/scripts/mariadb-upgrade-rehearsal.sh` locally with OrbStack to reproduce.
+
+## Longhorn data path
+
+Longhorn's data disk is `/var/mnt/longhorn`, a directory on the EPHEMERAL partition declared by `talos/all/30-longhorn-volume.yaml` (`UserVolumeConfig`, `volumeType: directory`). The kubelet sees `/var/mnt` by default, so no `extraMounts` is needed (1.14 dropped `extraMounts` anyway). `defaultDataPath` in the HelmRelease only seeds the disk of newly created Longhorn nodes.
+
+- Longhorn refuses two disks on the same filesystem ("same file system ID"), so moving a node's disk path means: evict and remove the old disk first, then add the new one — evicted replicas land on the other nodes. One node at a time, wait for all volumes `healthy` between nodes.
+- Longhorn does not create a missing disk directory; a new node needs the `UserVolumeConfig` applied before its disk is added.
+- Longhorn does not rebalance replicas by itself (`replica-auto-balance` is off), so after node-by-node maintenance replicas can end up uneven across nodes.
 
 ## NAS-backed SMB shares (Unraid)
 
@@ -250,7 +261,7 @@ No credential work per share — `unraid-k8s-user` has RW on the whole share. A 
 
 1. **API server → metrics-server** (aggregated API): Secured via cert-manager. The `selfsigned-cluster-issuer` ClusterIssuer issues a cert for the metrics-server service; cert-manager's cainjector injects the CA bundle into the `APIService` resource so the API server trusts it. Configured in the metrics-server HelmRelease `values.tls` block.
 
-2. **metrics-server → kubelet** (scraping node stats): Secured via kubelet TLS bootstrap + `kubelet-csr-approver`. Enabled by `serverTLSBootstrap: true` in `talos/all/10-kubelet.yaml` (under `machine.kubelet.extraConfig`). Kubelets submit `CertificateSigningRequest` objects; `kubelet-csr-approver` auto-approves them. This replaces `--kubelet-insecure-tls`.
+2. **metrics-server → kubelet** (scraping node stats): Secured via kubelet TLS bootstrap + `kubelet-csr-approver`. Enabled by `serverTLSBootstrap: true` in `talos/all/10-kubelet.yaml.tpl` (under `KubeletConfig.config`). Kubelets submit `CertificateSigningRequest` objects; `kubelet-csr-approver` auto-approves them. This replaces `--kubelet-insecure-tls`.
 
 **cert-manager cannot fix connection #2** — kubelet serving CSRs are issued by the kubelet process on each node, not by in-cluster workloads. Both components are needed for full hardening.
 
@@ -271,4 +282,4 @@ kubectl get csr   # expect 4 Pending with signerName: kubernetes.io/kubelet-serv
 
 ### kubelet patch merging
 
-When adding new `machine.kubelet` config, add it to `talos/all/10-kubelet.yaml` (which already holds `extraMounts`, `nodeIP`, `extraConfig`). Do not create a separate patch for the same top-level key — Talos merges patch keys, but having two patches that both set `machine.kubelet` can cause unexpected behavior depending on merge strategy.
+When adding kubelet config, add it to `talos/all/10-kubelet.yaml.tpl`: `KubeletConfig` for `config`/`extraArgs`/`image`, `KubeNodeConfig` for `nodeIP`, labels and taints. Do not set `machine.kubelet` in a v1alpha1 patch — it conflicts with the generated `KubeletConfig` document and fails validation.

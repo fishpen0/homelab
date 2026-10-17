@@ -1,0 +1,8 @@
+# Longhorn's data disk: a directory on EPHEMERAL, mounted at /var/mnt/longhorn
+# (visible to the kubelet by default). Declared so a rebuilt node recreates it;
+# Longhorn won't mkdir its own disk path. The engine-binaries/socket dirs under
+# /var/lib/longhorn are hardcoded by Longhorn and need no declaration.
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: longhorn
+volumeType: directory
