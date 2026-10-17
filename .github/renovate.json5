@@ -128,6 +128,7 @@
       matchPackageNames: ["ghcr.io/siderolabs/kubelet"],
       automerge: false,
       ignoreUnstable: true,
+      pinDigests: false, // kubernetesVersion can't carry a digest; the regex has no currentDigest
       addLabels: ["renovate/kubernetes", "needs-review"],
       prBodyNotes: [
         "**Upgrade the cluster BEFORE merging** — `topf apply` would otherwise roll static pods to this version without skew checks:",
@@ -136,6 +137,14 @@
         "```",
         "Check the [Talos support matrix](https://docs.siderolabs.com/talos/latest/getting-started/support-matrix) first for minor bumps.",
       ],
+    },
+    {
+      // OCI charts resolve via the docker datasource, so docker:pinDigests
+      // tries to pin them, but Flux chart.spec.version takes semver only.
+      // Fixed upstream (renovatebot/renovate#45760); Mend still pins as of 2026-10.
+      description: "OCI Helm charts: no digest pinning",
+      matchPackageNames: ["code.forgejo.org/forgejo-helm/forgejo"],
+      pinDigests: false,
     },
     {
       description: "topf is pre-1.0: review all non-patch updates",
