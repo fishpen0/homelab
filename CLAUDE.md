@@ -27,7 +27,7 @@ GitOps homelab: a 4-node Kubernetes cluster on a TuringPi board, reconciled by F
 - **OS**: Talos Linux (immutable, no SSH — use `talosctl`). Versions pinned in `talos/topf.yaml`, bumped by Renovate. Configs rendered/applied with [topf](https://github.com/postfinance/topf).
 - **API endpoint**: `https://192.168.1.10:6443` (Talos VIP across n1–n3). Cluster name `turingpi`, CNI Flannel.
 - **Nodes**: n1=192.168.1.234, n2=.235, n3=.236 (control planes, schedulable); n4=.233 (worker).
-- **Storage**: Longhorn, replicas=2, a disk on every node, hard anti-affinity. A node reboot leaves volumes `degraded` until rebuilt — wait for all volumes `healthy` before taking down another node.
+- **Storage**: Longhorn, replicas=2, a disk on every node (`/var/mnt/longhorn`, see below), hard anti-affinity. A node reboot leaves volumes `degraded` until rebuilt — wait for all volumes `healthy` before taking down another node.
 
 ## Repository Structure
 
@@ -88,8 +88,11 @@ topf apply                # confirms per node, waits for each to stabilize
 
 - Run via mise (it exports `SOPS_AGE_KEY_FILE`); otherwise sops/topf fail with "no key could decrypt".
 - **Patch layout**: `all/` → `control-plane/` (or `worker/`) → `node/<host>/`, lexical order, later wins. `*.yaml.tpl` files are Go templates (`.Node.Host`, `.Node.IP`, `.Node.Role`) — prefer them over per-node copies.
-- **Talos ≥ 1.14** uses multi-doc config (e.g. `UnattendedInstallConfig` replaces `machine.install`; the two are mutually exclusive). Branch on `semverCompare ">= 1.14.0-0" .Node.RuntimeData.TalosVersion` while upgrading.
-- Kubelet settings go in `talos/all/10-kubelet.yaml.tpl`; don't add a second patch for the same top-level key.
+- **Config shape (Talos 1.14+)**: topf's base config already contains the multi-doc kinds, so a v1alpha1 patch setting the same thing is rejected (`already set in v1alpha1 config`). Patch the new kinds instead: `machine.install` → `UnattendedInstallConfig`, `machine.network.nameservers` → `ResolverConfig`, `machine.kubelet.*` → `KubeletConfig` + `KubeNodeConfig` (`nodeIP`, labels, taints), `allowSchedulingOnControlPlanes` → `KubeNodeConfig` (taint entry with `$patch: delete`). `extraMounts` has no replacement. Kubelet settings go in `talos/all/10-kubelet.yaml`.
+- If a future bump changes the shape while nodes straddle versions, branch on `semverCompare "<constraint>" (.Node.RuntimeData.TalosVersion | default "<target>")` — RuntimeData is empty on offline renders (CI), so the default must be the target version.
+- `topf apply --dry-run` against nodes still on the old config shows a large diff (every setting re-expressed as documents). Apply node by node, checking `kubectl get nodes`/pods between each.
+- Non-interactive: `topf apply`/`upgrade` auto-decline prompts without a TTY; pass the global `--confirm=false` before the subcommand. `apply` has no `--progress` flag.
+- A worktree lacks the gitignored `talos/age-key.txt`; symlink the main checkout's key into `talos/`.
 - **CI**: `.github/workflows/talos-validate.yaml` renders every node with throwaway secrets and runs `talosctl validate` on PRs touching `talos/`.
 - Apply Talos changes **before** pushing Kubernetes changes that depend on them.
 
@@ -100,6 +103,14 @@ Merging a version bump changes nothing on the nodes, so upgrade from the PR bran
 - **Talos**: `topf upgrade --dry-run`, then `topf upgrade` (control planes one at a time, drains each).
 - **Kubernetes**: `talosctl upgrade-k8s -n 192.168.1.10 --to <version>`. Never bump the field and `topf apply` — that skips skew checks.
 - For minor bumps check the [Talos support matrix](https://docs.siderolabs.com/talos/latest/getting-started/support-matrix).
+
+## Longhorn data path
+
+The data disk is `/var/mnt/longhorn`, a directory on EPHEMERAL declared by `talos/all/30-longhorn-volume.yaml` (`UserVolumeConfig`, `volumeType: directory`); the kubelet sees `/var/mnt` by default. `/var/lib/longhorn` only holds Longhorn's hardcoded engine/socket dirs and is not a data disk. `defaultDataPath` in the HelmRelease only seeds newly created Longhorn nodes.
+
+- Longhorn refuses two disks on one filesystem. To move a node's disk path, evict and remove the old disk first, then add the new one — one node at a time, all volumes `healthy` between nodes.
+- Longhorn doesn't create a missing disk directory; apply the `UserVolumeConfig` before adding a new node's disk.
+- `replica-auto-balance` is off, so replicas can end up uneven after node-by-node maintenance.
 
 ## Database upgrades (grimmory MariaDB)
 
@@ -121,6 +132,6 @@ PV↔PVC is 1:1, so two apps needing the same subfolder need two PVs (same `sour
 ## TLS: metrics-server
 
 1. **API server → metrics-server**: cert-manager's `selfsigned-cluster-issuer` issues the cert; cainjector injects the CA into the `APIService`. Configured in the HelmRelease `values.tls`.
-2. **metrics-server → kubelet**: `serverTLSBootstrap: true` in `talos/all/10-kubelet.yaml.tpl` makes kubelets submit serving CSRs, which `kubelet-csr-approver` auto-approves. Replaces `--kubelet-insecure-tls`. cert-manager can't help here — kubelet serving certs are issued per node.
+2. **metrics-server → kubelet**: `serverTLSBootstrap: true` in `talos/all/10-kubelet.yaml` (`KubeletConfig.config`) makes kubelets submit serving CSRs, which `kubelet-csr-approver` auto-approves. Replaces `--kubelet-insecure-tls`. cert-manager can't help here — kubelet serving certs are issued per node.
 
 Verify after applying: `kubectl get csr` (kubelet-serving CSRs should be approved, not Pending/Denied).
