@@ -1,285 +1,137 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Session Start
 
-## Model Selection
+1. Announce the running model and the session's task.
+2. If a cheaper model would do, ask "This task would run fine on [model] — want to switch down?" If a more capable one is needed, ask "This task really needs Opus — want to switch up?" Wait for the answer.
+   - **Opus**: cross-referencing, multi-source synthesis, architecture, first-time builds with design decisions.
+   - **Sonnet**: routine work, editing existing code, most day-to-day tasks.
+   - **Haiku**: simple reads, copies, formatting, lookups, subagent research.
 
-At session start:
-1. Announce which model is running.
-2. State what task this session will handle.
-3. Assess the right model tier:
-   - **Opus**: Complex cross-referencing, multi-source synthesis, architect sessions, first-time builds with design decisions.
-   - **Sonnet**: Routine work, editing existing code, file reorganization, most day-to-day tasks.
-   - **Haiku**: Simple reads, file copies, formatting, search/lookup, subagent research.
-4. If current model is more expensive than needed, immediately ask: "This task would run fine on [model] — want to switch down?"
-5. If current model is less capable than needed, immediately ask: "This task really needs Opus — want to switch up?" Wait for answer before proceeding in either case.
+## New Tools
+
+Stop and tell the user before adding any new tool to the toolchain (CLI tools, `mise.toml` entries, package-manager installs, new dependencies, or wrappers like new runtimes). Wait for approval.
 
 ## Cost & Context Hygiene
 
-**Before every task**, evaluate cheapest and fastest execution:
-1. Can this run on a cheaper model?
-2. Can independent tasks run in parallel sessions?
-3. Is the context carrying dead weight from finished work?
-4. Am I about to run an expensive autonomous loop without checkpoints?
+Before each task, consider: cheaper model? independent tasks in parallel sessions? dead-weight context from finished work? an expensive autonomous loop without checkpoints?
 
-**Proactive context switch alerts.** Flag when:
-- A distinct task is finished and the next one is independent
-- Context is past ~40-50% and remaining work doesn't need the history
-- Cheap work is being taxed by earlier complex context
+Flag a context switch when a distinct task finishes and the next is independent, or context is past ~40-50% and the remaining work doesn't need it. Don't flag mid-architect or mid-sync. Surface the tradeoff; the user decides.
 
-Do NOT flag when mid-architect or mid-sync where accumulated context IS the value. Surface the tradeoff. Let the user decide.
-
-**Cost logging.** At the end of each session:
-- Ask the user to run `/cost` for the session total
-- Append an entry to: ~/pm-automation/.state/cost-log.yaml
-- Fields: date, task, type, cost, duration_api, duration_wall, code_changes, models (per-model breakdown), notes
+At session end, ask the user to run `/cost`, then append an entry to `~/pm-automation/.state/cost-log.yaml` with: date, task, type, cost, duration_api, duration_wall, code_changes, models (per-model breakdown), notes.
 
 ## What This Repo Is
 
-GitOps-managed homelab running a 4-node Kubernetes cluster on a TuringPi board. Infrastructure is declared as code and automatically reconciled by Flux CD. Changes to `main` are picked up within 1 minute and reconciled within 10 minutes.
+GitOps homelab: a 4-node Kubernetes cluster on a TuringPi board, reconciled by Flux CD from `kubernetes/`. Changes to `main` are picked up within 1 minute and reconciled within 10.
 
-## Cluster Overview
-
-- **OS**: Talos Linux (immutable, no SSH — managed via `talosctl`). Talos and Kubernetes versions are pinned in `talos/topf.yaml` and bumped by Renovate. Configs are rendered and applied with [topf](https://github.com/postfinance/topf).
-- **Cluster name**: `turingpi`
-- **API endpoint**: `https://192.168.1.10:6443` (Talos native VIP, floats across n1–n3)
-- **Nodes**: n1–n3 are control planes (scheduling allowed), n4 is the worker
-- **Node IPs**: n1=192.168.1.234, n2=192.168.1.235, n3=192.168.1.236, n4=192.168.1.233
-- **CNI**: Flannel
-- **Storage**: Longhorn (distributed block storage, replicas=2). Every node — control planes included — has a `/var/mnt/longhorn` disk (a `UserVolumeConfig` directory volume on EPHEMERAL, `talos/all/30-longhorn-volume.yaml`) and can hold replicas; Longhorn itself hardcodes `/var/lib/longhorn/{engine-binaries,metadata,unix-domain-socket,logs}` for its engine-image/instance-manager pods, so that path stays and is not a data disk; hard anti-affinity keeps a volume's two replicas on different nodes, so a single node reboot leaves volumes `degraded` until the rebuild finishes. Wait for all volumes to be `healthy` before taking down another node.
-- **GitOps**: Flux v2 watches `kubernetes/`
+- **OS**: Talos Linux (immutable, no SSH — use `talosctl`). Versions pinned in `talos/topf.yaml`, bumped by Renovate. Configs rendered/applied with [topf](https://github.com/postfinance/topf).
+- **API endpoint**: `https://192.168.1.10:6443` (Talos VIP across n1–n3). Cluster name `turingpi`, CNI Flannel.
+- **Nodes**: n1=192.168.1.234, n2=.235, n3=.236 (control planes, schedulable); n4=.233 (worker).
+- **Storage**: Longhorn, replicas=2, a disk on every node (`/var/mnt/longhorn`, see below), hard anti-affinity. A node reboot leaves volumes `degraded` until rebuilt — wait for all volumes `healthy` before taking down another node.
 
 ## Repository Structure
 
 ```
-homelab/
-├── kubernetes/                       # Kubernetes manifests
-│   ├── flux-system/                  # Flux bootstrap manifests
-│   └── apps/                         # All deployed apps + infrastructure, grouped by namespace
-│       ├── cert-manager/             # cert-manager operator + ClusterIssuer config
-│       ├── external-secrets/         # ESO operator + 1Password Connect + ClusterSecretStore
-│       ├── kube-system/              # metrics-server, kubelet-csr-approver
-│       ├── longhorn-system/          # Distributed storage + UI ingress
-│       ├── manyfold/                 # 3D print model library (will fold into default later)
-│       ├── observability/            # kube-prometheus-stack, Loki, Alloy
-│       └── tailscale/                # Tailscale operator (VPN ingress class)
-├── talos/                            # Talos cluster config, managed by topf
-│   ├── topf.yaml                     # Cluster + nodes, Talos/k8s versions
-│   ├── schematic.yaml                # Image Factory schematic (RK1 overlay + extensions)
-│   ├── secrets.sops.yaml             # Talos secrets bundle (SOPS-encrypted)
-│   ├── all/                          # Patches for every node (*.yaml.tpl = Go template)
-│   └── control-plane/                # Patches for control planes only
-├── tofu/                             # OpenTofu (Terraform) — currently manages Flux bootstrap
-├── TODO/                             # Work tracking
-└── mise.toml                         # Pinned CLI tools (topf, talosctl, sops, ...) + SOPS_AGE_KEY_FILE
+kubernetes/flux-system/   Flux bootstrap
+kubernetes/apps/<namespace>/<app>/{ks.yaml, kustomization.yaml, app/}
+talos/                    topf.yaml, schematic.yaml, secrets.sops.yaml, all/ + control-plane/ patches
+tofu/                     OpenTofu (Flux bootstrap)
+TODO/                     work tracking
+mise.toml                 pinned CLI tools + SOPS_AGE_KEY_FILE
 ```
 
-CLI tools are pinned in `mise.toml` and bumped by Renovate. Run `mise install` once; mise also sets `SOPS_AGE_KEY_FILE` for anything run inside the repo.
-
-Each app dir follows: `<category>/<app>/{ks.yaml, kustomization.yaml, app/}`. Infrastructure components live in their own namespace (cert-manager, longhorn-system, etc.); user-facing apps go in `default` per bbck/onedr0p homelab convention.
+Run `mise install` once. Infrastructure lives in its own namespace; user-facing apps go in `default`.
 
 ## Key Conventions
 
-- **All apps deploy via HelmRelease** — no raw Deployments. Add new apps as a HelmRelease + Flux Kustomization under `kubernetes/apps/<category>/<app>/`. For apps with no upstream chart, wrap raw images in `bjw-s` `app-template` (see `manyfold` for an example).
-- **Kustomize overlays** wire everything together. Every directory has a `kustomization.yaml` that must include new resources explicitly.
-- **Secrets use SOPS + age** encryption. The age key is at `talos/age-key.txt` (gitignored). Encrypted files end in `.sops.yaml`.
-- **Longhorn PVCs** use the `longhorn` storage class.
+- **Everything deploys via HelmRelease** — no raw Deployments. Wrap plain images in bjw-s `app-template` (see `manyfold`).
+- Every directory's `kustomization.yaml` must list new resources explicitly.
+- **Secrets**: SOPS + age (`*.sops.yaml`, key at `talos/age-key.txt`, gitignored) or ExternalSecrets from 1Password.
+- Longhorn PVCs use the `longhorn` storage class.
 
 ## Common Operations
 
-### Interact with the turing pi BMC
 ```bash
-tpi -h
-tpi info
-tpi power status
-```
-
-### Check cluster/Flux status
-```bash
-kubectl get nodes
 flux get kustomizations -n flux-system
 flux get helmreleases -A
-```
-
-### Force Flux to reconcile now
-```bash
 flux reconcile kustomization flux-system --with-source
-```
-
-### Apply a kustomization manually
-```bash
-kubectl apply -k kubernetes/apps/<category>/<component>/app/
-```
-
-### Talos cluster management
-```bash
-# Health check
+kubectl apply -k kubernetes/apps/<namespace>/<app>/app/   # manual apply
 talosctl health -n 192.168.1.234
-
-# View node logs
-talosctl -n 192.168.1.234 logs -f
-
-# Bootstrap (fresh cluster only)
-talosctl bootstrap -n 192.168.1.234
-
-# Get kubeconfig
 talosctl kubeconfig -n 192.168.1.10
+tpi info; tpi power status                                  # TuringPi BMC
+cd tofu && tofu plan                                        # then tofu apply
 ```
 
-### Change Talos node config
-```bash
-cd talos
-topf render -o output       # offline render to talos/output/ (gitignored, plaintext secrets)
-topf apply --dry-run        # diff against the live nodes
-topf apply                  # confirms per node, waits for each to stabilize
-```
+**Thermals** (per node IP): `talosctl -n <ip> read /sys/class/thermal/thermal_zone0/temp` (millidegrees C), `.../cooling_device0/cur_state` (fan 0–5), `/proc/loadavg`. Normal idle: 45–48°C, fan 1–2; 3+ warrants attention. n4 runs cooler. Fan noise differences are often physical resonance.
 
-### OpenTofu
-```bash
-cd tofu
-tofu init
-tofu plan
-tofu apply
-```
+## Adding New Apps
 
-### Fan & Thermal Monitoring
+1. Create `kubernetes/apps/<namespace>/<app>/` with `ks.yaml` (Flux Kustomization, `dependsOn` + `healthChecks` as needed), `kustomization.yaml` (wraps `ks.yaml`), and `app/` (its own `kustomization.yaml`, `helmrelease.yaml`, `helmrepository.yaml`, plus any ExternalSecret/PVC/Ingress; `namespace.yaml` only for infra apps in their own namespace).
+2. Add the app to `kubernetes/apps/<namespace>/kustomization.yaml`, and the namespace to `kubernetes/apps/kustomization.yaml` if new.
+3. Commit to `main`.
 
-```bash
-# Temps across all nodes (millidegrees C — divide by 1000)
-for node in 192.168.1.234 192.168.1.235 192.168.1.236 192.168.1.233; do
-  echo -n "$node temp: " && talosctl --nodes $node read /sys/class/thermal/thermal_zone0/temp
-done
+- `HelmRepository` goes in `namespace: flux-system`; `HelmRelease` in the app's namespace with `install.createNamespace: true`.
+- A `HelmRepository` used by one app lives in that app's `app/` dir. When a second app needs it, move it to `kubernetes/apps/flux-repositories/helm-repositories/app/` and add `dependsOn: helm-repositories` to every consumer (two Kustomizations can't own the same object). `bjw-s` and `grafana` already live there.
 
-# Fan speed (pwm-fan, 0–5 scale) across all nodes
-for node in 192.168.1.234 192.168.1.235 192.168.1.236 192.168.1.233; do
-  echo -n "$node fan state: " && talosctl --nodes $node read /sys/class/thermal/cooling_device0/cur_state
-done
+### Split Kustomizations when a CR consumes a CRD from the same repo
 
-# Load averages
-for node in 192.168.1.234 192.168.1.235 192.168.1.236 192.168.1.233; do
-  echo -n "$node load: " && talosctl --nodes $node read /proc/loadavg
-done
-```
-
-**Reference values (idle/light load):**
-- Temps: ~45–48°C is normal
-- Fan states: 1–2/5 is normal; 3+ warrants attention
-- n4 runs cooler/quieter (worker only, light Flux + CoreDNS workload)
-- Fan audibility differences are often physical resonance, not a thermal issue
-
-## Adding New Infrastructure
-
-1. Create the directory tree `kubernetes/apps/<category>/<app>/` with:
-   - `ks.yaml` — Flux Kustomization (with `dependsOn` + `healthChecks` as needed)
-   - `kustomization.yaml` — wraps `ks.yaml`
-   - `app/` — actual manifests:
-     - `kustomization.yaml` listing each resource
-     - `namespace.yaml` (only for infrastructure apps in their own namespace; user apps live in `default`)
-     - `helmrepository.yaml`, `helmrelease.yaml`, plus any `Secret`/`ConfigMap`/`Ingress`/`ExternalSecret`/PVC files
-2. Add `<app>` to the parent `kubernetes/apps/<category>/kustomization.yaml` if it's new in that category
-3. Add `<category>` to `kubernetes/apps/kustomization.yaml` if the category is new
-4. Commit to `main` — Flux reconciles automatically (≤1 min pickup, ≤10 min to Ready)
-
-**Pattern notes:**
-- `HelmRepository` always goes in `namespace: flux-system`
-- A `HelmRepository` used by **exactly one** app lives in that app's own `app/` dir. Once a
-  *second* app needs the same repo, move it to `kubernetes/apps/flux-repositories/helm-repositories/app/`
-  and give every consumer `dependsOn: helm-repositories`. Two Kustomizations cannot both declare
-  the same object — the second fails with a Flux ownership conflict. `bjw-s` (manyfold, grimmory)
-  and `grafana` (loki, alloy) already live there.
-- `HelmRelease` goes in the component's own namespace
-- `install.createNamespace: true` is standard on all HelmReleases
-
-### CRD bootstrap: split Kustomizations when a CR consumes a CRD from the same repo
-
-If a custom resource (e.g. `ClusterSecretStore`, `ClusterIssuer`, `Certificate`) lives in the same Flux Kustomization as the HelmRelease that installs its CRD, Flux's upfront server-side dry-run fails with `no matches for kind "Foo" in version "x/y"` — the CRD doesn't exist yet, so the whole Kustomization stalls and the operator never gets deployed. Classic chicken-and-egg.
-
-**Fix:** split into two Flux Kustomizations under the same app dir:
-
-- `<app>/app/` — operator HelmRelease + supporting Secrets/Configs (no CRs)
-- `<app>-config/app/` — the CRs that depend on the CRD
-
-The `-config` Kustomization sets `dependsOn: [<app>]` plus `healthChecks` on the operator's HelmRelease so the CRD is guaranteed installed before the CRs apply.
-
-Examples in this repo:
-- `cert-manager` (operator) + `cert-manager-config` (ClusterIssuer)
-- `external-secrets` (operator + 1password-connect) + `external-secrets-config` (ClusterSecretStore)
-
-Downstream apps that consume the CR (e.g. an `ExternalSecret` referencing the `ClusterSecretStore`) should `dependsOn` the `-config` Kustomization, not just the operator one — otherwise their own CRs may apply before the SecretStore/Issuer is Ready.
+A CR (`ClusterSecretStore`, `ClusterIssuer`, ...) in the same Kustomization as the HelmRelease that installs its CRD fails Flux's dry-run (`no matches for kind`). Split into `<app>/app/` (operator) and `<app>-config/app/` (CRs); the `-config` Kustomization sets `dependsOn: [<app>]` plus `healthChecks` on the operator's HelmRelease. Examples: `cert-manager`/`cert-manager-config`, `external-secrets`/`external-secrets-config`. Consumers of those CRs should depend on the `-config` Kustomization.
 
 ## Talos config with topf
 
-- **SOPS key:** the age key is at `talos/age-key.txt` (gitignored). `mise.toml` exports `SOPS_AGE_KEY_FILE` for it; outside mise, sops/topf fail with a "no key could decrypt" error.
-- **Patch layout:** `all/` → `control-plane/` (or `worker/`) → `node/<host>/`, lexical order within each dir, later wins. Files ending `.yaml.tpl` are Go templates with `.Node.Host`, `.Node.IP`, `.Node.Role` — use them instead of copying per-node blocks.
-- **Config shape (Talos 1.14+):** the base config topf generates now contains the multi-document kinds (`KubeletConfig`, `KubeNodeConfig`, `ResolverConfig`, `UnattendedInstallConfig`, ...), and a v1alpha1 patch that sets the same thing is rejected (`already set in v1alpha1 config`). Patch the new kinds: `machine.install` → `UnattendedInstallConfig`, `machine.network.nameservers` → `ResolverConfig`, `machine.kubelet.*` → `KubeletConfig` + `KubeNodeConfig`, `allowSchedulingOnControlPlanes` → `KubeNodeConfig` (`taints` entry with `$patch: delete`). `machine.kubelet.extraMounts` has no replacement. The patches are plain 1.14-shape documents with no version branching. If a future Talos bump changes the shape again while nodes straddle versions, branch on `semverCompare "<constraint>" (.Node.RuntimeData.TalosVersion | default "<target>")` — RuntimeData is empty on offline renders (CI), so the `default` must be the target version.
-- **Applying after an upgrade:** `topf apply --dry-run` against nodes that still hold the old single-document config shows a large diff (every setting re-expressed as separate documents), not just your change. Apply node by node and check `kubectl get nodes` / pods between each.
-- **Non-interactive topf:** `topf upgrade`/`apply` auto-decline their confirmation prompt when stdin is not a terminal; pass the global `--confirm=false` (before the subcommand). `apply` has no `--progress` flag (`upgrade` does).
-- **age key in a worktree:** `talos/age-key.txt` is gitignored, so a git worktree lacks it; symlink the main checkout's key into the worktree's `talos/`.
-- **CI:** `.github/workflows/talos-validate.yaml` renders every node with throwaway secrets and runs `talosctl validate` on PRs touching `talos/`.
+```bash
+cd talos
+topf render -o output     # offline render to talos/output/ (gitignored, plaintext secrets)
+topf apply --dry-run      # diff against live nodes
+topf apply                # confirms per node, waits for each to stabilize
+```
 
-### Talos / Kubernetes upgrades: upgrade the cluster, then merge
+- Run via mise (it exports `SOPS_AGE_KEY_FILE`); otherwise sops/topf fail with "no key could decrypt".
+- **Patch layout**: `all/` → `control-plane/` (or `worker/`) → `node/<host>/`, lexical order, later wins. `*.yaml.tpl` files are Go templates (`.Node.Host`, `.Node.IP`, `.Node.Role`) — prefer them over per-node copies.
+- **Config shape (Talos 1.14+)**: topf's base config already contains the multi-doc kinds, so a v1alpha1 patch setting the same thing is rejected (`already set in v1alpha1 config`). Patch the new kinds instead: `machine.install` → `UnattendedInstallConfig`, `machine.network.nameservers` → `ResolverConfig`, `machine.kubelet.*` → `KubeletConfig` + `KubeNodeConfig` (`nodeIP`, labels, taints), `allowSchedulingOnControlPlanes` → `KubeNodeConfig` (taint entry with `$patch: delete`). `extraMounts` has no replacement. Kubelet settings go in `talos/all/10-kubelet.yaml`.
+- If a future bump changes the shape while nodes straddle versions, branch on `semverCompare "<constraint>" (.Node.RuntimeData.TalosVersion | default "<target>")` — RuntimeData is empty on offline renders (CI), so the default must be the target version.
+- `topf apply --dry-run` against nodes still on the old config shows a large diff (every setting re-expressed as documents). Apply node by node, checking `kubectl get nodes`/pods between each.
+- Non-interactive: `topf apply`/`upgrade` auto-decline prompts without a TTY; pass the global `--confirm=false` before the subcommand. `apply` has no `--progress` flag.
+- A worktree lacks the gitignored `talos/age-key.txt`; symlink the main checkout's key into `talos/`.
+- **CI**: `.github/workflows/talos-validate.yaml` renders every node with throwaway secrets and runs `talosctl validate` on PRs touching `talos/`.
+- Apply Talos changes **before** pushing Kubernetes changes that depend on them.
 
-Merging a version bump changes nothing on the nodes, so the cluster is upgraded from the PR branch first and the PR merged after. That way `main` always matches what's running. (Merging first is how the nodes ended up on v1.13.0-alpha.2 while git said v1.13.3.)
+### Upgrades: upgrade the cluster, then merge
 
-- **Talos** (`talosVersion`): `topf upgrade --dry-run`, then `topf upgrade` (control planes one at a time, drains each node).
-- **Kubernetes** (`kubernetesVersion`): `talosctl upgrade-k8s -n 192.168.1.10 --to <version>`. Never bump the field and `topf apply` — that rolls static pods without skew checks.
-- Check the [Talos support matrix](https://docs.siderolabs.com/talos/latest/getting-started/support-matrix) for minor bumps.
+Merging a version bump changes nothing on the nodes, so upgrade from the PR branch first and merge after, keeping `main` in sync with what's running.
 
-## Database upgrades (grimmory MariaDB)
-
-- `MARIADB_AUTO_UPGRADE: "1"` must stay set — without it the entrypoint silently skips `mariadb-upgrade` on image bumps.
-- A `pre-upgrade` Helm hook Job (`dump` controller in `mariadb.yaml`) runs `mariadb-dump` against the live server before every Helm upgrade, keeping the last 10 dumps on the `grimmory-mariadb-backups` PVC. It blocks the upgrade if the server is unreachable; set its `DUMP_REQUIRED: "false"` to ship a fix for a down DB.
-- `grimmory-mariadb-data` opts into the `snapshot-daily` Longhorn RecurringJob (`longhorn-system/longhorn-config`, local snapshots, retain 7).
-- The `mariadb-upgrade-rehearsal` workflow upgrades a Flyway-seeded data dir from the PR's base tag to its head tag on an arm64 runner; run `.github/scripts/mariadb-upgrade-rehearsal.sh` locally with OrbStack to reproduce.
+- **Talos**: `topf upgrade --dry-run`, then `topf upgrade` (control planes one at a time, drains each).
+- **Kubernetes**: `talosctl upgrade-k8s -n 192.168.1.10 --to <version>`. Never bump the field and `topf apply` — that skips skew checks.
+- For minor bumps check the [Talos support matrix](https://docs.siderolabs.com/talos/latest/getting-started/support-matrix).
 
 ## Longhorn data path
 
-Longhorn's data disk is `/var/mnt/longhorn`, a directory on the EPHEMERAL partition declared by `talos/all/30-longhorn-volume.yaml` (`UserVolumeConfig`, `volumeType: directory`). The kubelet sees `/var/mnt` by default, so no `extraMounts` is needed (1.14 dropped `extraMounts` anyway). `defaultDataPath` in the HelmRelease only seeds the disk of newly created Longhorn nodes.
+The data disk is `/var/mnt/longhorn`, a directory on EPHEMERAL declared by `talos/all/30-longhorn-volume.yaml` (`UserVolumeConfig`, `volumeType: directory`); the kubelet sees `/var/mnt` by default. `/var/lib/longhorn` only holds Longhorn's hardcoded engine/socket dirs and is not a data disk. `defaultDataPath` in the HelmRelease only seeds newly created Longhorn nodes.
 
-- Longhorn refuses two disks on the same filesystem ("same file system ID"), so moving a node's disk path means: evict and remove the old disk first, then add the new one — evicted replicas land on the other nodes. One node at a time, wait for all volumes `healthy` between nodes.
-- Longhorn does not create a missing disk directory; a new node needs the `UserVolumeConfig` applied before its disk is added.
-- Longhorn does not rebalance replicas by itself (`replica-auto-balance` is off), so after node-by-node maintenance replicas can end up uneven across nodes.
+- Longhorn refuses two disks on one filesystem. To move a node's disk path, evict and remove the old disk first, then add the new one — one node at a time, all volumes `healthy` between nodes.
+- Longhorn doesn't create a missing disk directory; apply the `UserVolumeConfig` before adding a new node's disk.
+- `replica-auto-balance` is off, so replicas can end up uneven after node-by-node maintenance.
+
+## Database upgrades (grimmory MariaDB)
+
+- Keep `MARIADB_AUTO_UPGRADE: "1"`; without it the entrypoint skips `mariadb-upgrade` on image bumps.
+- A `pre-upgrade` Helm hook Job (`dump` controller in `mariadb.yaml`) dumps the live DB before every upgrade, keeping 10 dumps on `grimmory-mariadb-backups`. It blocks the upgrade if the server is unreachable; set `DUMP_REQUIRED: "false"` to ship a fix for a down DB.
+- `grimmory-mariadb-data` uses the `snapshot-daily` Longhorn RecurringJob (local snapshots, retain 7).
+- The `mariadb-upgrade-rehearsal` workflow rehearses base→head upgrades on arm64; reproduce locally with `.github/scripts/mariadb-upgrade-rehearsal.sh` (OrbStack).
 
 ## NAS-backed SMB shares (Unraid)
 
-Pods mount Unraid SMB shares via `csi-driver-smb`. Kubernetes has no in-tree CIFS volume, so the driver is required (NFS would be in-tree but offers no credential auth and depends on node-IP stability we don't have — see `TODO/ipv6-stability.md`).
+Pods mount Unraid SMB shares via `csi-driver-smb` (no in-tree CIFS; NFS lacks credential auth and depends on node-IP stability — see `TODO/ipv6-stability.md`). `kube-system/csi-driver-smb-config/` holds one shared `smb-creds` ExternalSecret (1Password Login `unraid-k8s-user`) and the share PVs in `app/shares/`; a JSON6902 patch in `app/kustomization.yaml` injects all constant fields.
 
-Layout (operator + `-config` split, like cert-manager):
-- `kube-system/csi-driver-smb/` — the driver HelmRelease.
-- `kube-system/csi-driver-smb-config/` — one shared `smb-creds` ExternalSecret (cluster's single SMB identity, 1Password Login item `unraid-k8s-user`) + the share PVs under `app/shares/`. A JSON6902 patch in `app/kustomization.yaml` injects all constant fields (driver, credential, mountOptions, `uid=99,gid=100`, capacity, `Retain`).
+To mount a share/subfolder:
+1. Add `csi-driver-smb-config/app/shares/<name>.yaml` with only `metadata.name`, `csi.volumeHandle`, and `csi.volumeAttributes.source` (`//192.168.1.98/<Share>/<subdir>`), and list it in `app/kustomization.yaml`.
+2. In the consuming app: a PVC (`storageClassName: ""`, `volumeName: <name>`, RWX) mounted via bjw-s `existingClaim`, and `dependsOn: csi-driver-smb-config` in its `ks.yaml`.
 
-**To mount a new share/subfolder:**
-1. Add a PV at `csi-driver-smb-config/app/shares/<name>.yaml` — only `metadata.name`, `csi.volumeHandle`, and `csi.volumeAttributes.source` (`//192.168.1.98/<Share>/<subdir>`). Everything else comes from the patch.
-2. List it in `csi-driver-smb-config/app/kustomization.yaml`.
-3. In the consuming app: a `PersistentVolumeClaim` (`storageClassName: ""`, `volumeName: <name>`, RWX) and mount it with bjw-s `existingClaim`. Add `dependsOn: csi-driver-smb-config` to the app's `ks.yaml`.
+PV↔PVC is 1:1, so two apps needing the same subfolder need two PVs (same `source`, different names).
 
-No credential work per share — `unraid-k8s-user` has RW on the whole share. A PV↔PVC bind is 1:1, so two apps needing the same subfolder need two PVs (same `source`, different names).
+## TLS: metrics-server
 
-## TLS Architecture Notes
+1. **API server → metrics-server**: cert-manager's `selfsigned-cluster-issuer` issues the cert; cainjector injects the CA into the `APIService`. Configured in the HelmRelease `values.tls`.
+2. **metrics-server → kubelet**: `serverTLSBootstrap: true` in `talos/all/10-kubelet.yaml` (`KubeletConfig.config`) makes kubelets submit serving CSRs, which `kubelet-csr-approver` auto-approves. Replaces `--kubelet-insecure-tls`. cert-manager can't help here — kubelet serving certs are issued per node.
 
-### metrics-server TLS (two separate connections)
-
-1. **API server → metrics-server** (aggregated API): Secured via cert-manager. The `selfsigned-cluster-issuer` ClusterIssuer issues a cert for the metrics-server service; cert-manager's cainjector injects the CA bundle into the `APIService` resource so the API server trusts it. Configured in the metrics-server HelmRelease `values.tls` block.
-
-2. **metrics-server → kubelet** (scraping node stats): Secured via kubelet TLS bootstrap + `kubelet-csr-approver`. Enabled by `serverTLSBootstrap: true` in `talos/all/10-kubelet.yaml` (under `KubeletConfig.config`). Kubelets submit `CertificateSigningRequest` objects; `kubelet-csr-approver` auto-approves them. This replaces `--kubelet-insecure-tls`.
-
-**cert-manager cannot fix connection #2** — kubelet serving CSRs are issued by the kubelet process on each node, not by in-cluster workloads. Both components are needed for full hardening.
-
-### Applying Talos config changes safely
-
-After editing patches under `talos/`, apply **before** pushing Kubernetes changes that depend on the new config (e.g. removing `--kubelet-insecure-tls`):
-
-```bash
-cd talos
-topf apply --dry-run
-topf apply
-```
-
-Verify kubelet CSRs appear after applying:
-```bash
-kubectl get csr   # expect 4 Pending with signerName: kubernetes.io/kubelet-serving
-```
-
-### kubelet patch merging
-
-When adding kubelet config, add it to `talos/all/10-kubelet.yaml`: `KubeletConfig` for `config`/`extraArgs`/`image`, `KubeNodeConfig` for `nodeIP`, labels and taints. Do not set `machine.kubelet` in a v1alpha1 patch — it conflicts with the generated `KubeletConfig` document and fails validation.
+Verify after applying: `kubectl get csr` (kubelet-serving CSRs should be approved, not Pending/Denied).
