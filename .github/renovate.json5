@@ -139,14 +139,6 @@
       ],
     },
     {
-      // OCI charts resolve via the docker datasource, so docker:pinDigests
-      // tries to pin them, but Flux chart.spec.version takes semver only.
-      // Fixed upstream (renovatebot/renovate#45760); Mend still pins as of 2026-10.
-      description: "OCI Helm charts: no digest pinning",
-      matchPackageNames: ["code.forgejo.org/forgejo-helm/forgejo"],
-      pinDigests: false,
-    },
-    {
       description: "topf is pre-1.0: review all non-patch updates",
       matchPackageNames: ["postfinance/topf"],
       matchUpdateTypes: ["minor", "major"],
