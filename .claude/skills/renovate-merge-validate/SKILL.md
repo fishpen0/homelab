@@ -10,8 +10,8 @@ Flux deploys whatever lands on `main`, so "merge" means "roll it out to the live
 ## 1. Triage (main agent, no subagents yet)
 
 ```bash
-rtk gh pr list --author "app/renovate" --json number,title,mergeable,statusCheckRollup,labels,headRefName
-rtk gh pr diff <n>        # for each candidate
+gh pr list --author "app/renovate" --json number,title,mergeable,statusCheckRollup,labels,headRefName
+gh pr diff <n>        # for each candidate
 ```
 
 Classify every PR, then show the user a short table (PR, bump size, namespace, class, risk) before merging anything:
@@ -40,7 +40,7 @@ Spawn one general-purpose subagent per PR in a single turn (background). Give ea
 > Merge and validate Renovate PR #N (<title>) in /Users/loganstuart/dev/personal/homelab.
 > 1. Baseline: record HelmRelease state, pods, and any app-specific resources (ExternalSecrets, Certificates, Ingresses, PVCs) in the target namespace. Check `kubectl` works first.
 > 2. Read the diff and (for non-patch) upstream release notes. If you find a breaking change, STOP and report instead of merging.
-> 3. `rtk gh pr merge N --squash --delete-branch`.
+> 3. `gh pr merge N --squash --delete-branch`.
 > 4. `flux reconcile kustomization flux-system --with-source`, then the app's own Kustomization. Never edit manifests by hand or `kubectl apply`; Flux owns the cluster.
 > 5. Validate (see checks below). A HelmRelease can still say `Running 'upgrade'` right after rollout finishes; wait ~30s and recheck before judging.
 > 6. Report: version before/after, each check with evidence, anything odd (pre-existing errors seen in the baseline count as odd-but-not-yours; say so).
@@ -58,7 +58,7 @@ Follow the repo's debugging discipline: diagnose from logs/events before suggest
 
 One table: PR, old → new, result (validated / failed / skipped), key evidence. Call out untested paths honestly (e.g. cert-manager renewal not exercised), failures with logs, and PRs deliberately skipped with the reason. Offer the next-best candidates.
 
-If a PR fails validation: don't revert silently. Show the evidence and propose a revert PR (`rtk gh pr revert` or a revert commit) for the user to approve.
+If a PR fails validation: don't revert silently. Show the evidence and propose a revert PR (`gh pr revert` or a revert commit) for the user to approve.
 
 ## Notes
 
