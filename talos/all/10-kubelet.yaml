@@ -1,0 +1,11 @@
+apiVersion: v1alpha1
+kind: KubeletConfig
+config:
+  serverTLSBootstrap: true
+---
+apiVersion: v1alpha1
+kind: KubeNodeConfig
+nodeIP:
+  validSubnets:
+    - "192.168.1.0/24"
+    - "fdd7:ad7c:fa:4181::/64"

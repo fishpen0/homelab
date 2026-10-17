@@ -13,13 +13,8 @@ machine:
         routes:
           - network: 0.0.0.0/0
             gateway: 192.168.1.254
-{{ if semverCompare ">= 1.14.0-0" (.Node.RuntimeData.TalosVersion | default "1.14.0") -}}
 ---
 apiVersion: v1alpha1
 kind: ResolverConfig
 nameservers:
   - address: 192.168.1.42
-{{- else }}
-    nameservers:
-      - 192.168.1.42
-{{- end }}
