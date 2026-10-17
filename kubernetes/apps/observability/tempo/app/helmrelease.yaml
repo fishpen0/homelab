@@ -9,7 +9,7 @@ spec:
     spec:
       # The grafana/tempo chart is deprecated; it moved to grafana-community.
       chart: tempo
-      version: "3.1.0"
+      version: "3.2.0"
       sourceRef:
         kind: HelmRepository
         name: grafana-community
