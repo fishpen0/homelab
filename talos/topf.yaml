@@ -3,7 +3,7 @@ clusterEndpoint: https://192.168.1.10:6443
 # No "v" prefix: topf builds the installer tag as ":v<talosVersion>"
 talosVersion: 1.14.2
 # Bump only after `talosctl upgrade-k8s` has run, or `topf apply` reverts it
-kubernetesVersion: v1.36.5
+kubernetesVersion: v1.37.2
 schematicId: "@schematic.yaml"
 secretsPath: secrets.sops.yaml
 
