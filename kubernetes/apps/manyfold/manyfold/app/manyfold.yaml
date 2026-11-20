@@ -26,7 +26,7 @@ spec:
           manyfold:
             image:
               repository: manyfold3d/manyfold
-              tag: "0.151.0@sha256:cebdd568b98f09932ef79135962b77fcf8e44833a644273f232548594207ca91"
+              tag: "0.154.3@sha256:528f9be8568782b1d6f3acc71659ddfc8975af109dfb1e0f4865ba3feca27c05"
             env:
               # Match the SMB mount's uid/gid mapping (nobody:users, 99:100).
               PUID: "99"
