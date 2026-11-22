@@ -81,21 +81,6 @@
       minimumReleaseAge: null,
     },
     {
-      // Longhorn-backed, Recreate strategy: a merge restarts the database, so
-      // check volume health first.
-      description: "Databases: manual review for digest updates",
-      matchPackageNames: ["/(^|/)postgres$/", "/(^|/)mariadb$/"],
-      matchUpdateTypes: ["digest"],
-      automerge: false,
-    },
-    {
-      description: "MariaDB: upgrade safety notes",
-      matchPackageNames: ["/(^|/)mariadb$/"],
-      prBodyNotes: [
-        "The `mariadb-upgrade-rehearsal` check upgrades a Flyway-seeded data dir from the base tag to this one on arm64. A pre-upgrade Helm hook dumps the live DB to the `grimmory-mariadb-backups` PVC before rollout, and `grimmory-mariadb-data` has daily Longhorn snapshots.",
-      ],
-    },
-    {
       description: "Longhorn: manual review required",
       matchPackageNames: ["longhorn"],
       automerge: false,

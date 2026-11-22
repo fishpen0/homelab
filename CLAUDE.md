@@ -112,13 +112,6 @@ The data disk is `/var/mnt/longhorn`, a directory on EPHEMERAL declared by `talo
 - Longhorn doesn't create a missing disk directory; apply the `UserVolumeConfig` before adding a new node's disk.
 - `replica-auto-balance` is off, so replicas can end up uneven after node-by-node maintenance.
 
-## Database upgrades (grimmory MariaDB)
-
-- Keep `MARIADB_AUTO_UPGRADE: "1"`; without it the entrypoint skips `mariadb-upgrade` on image bumps.
-- A `pre-upgrade` Helm hook Job (`dump` controller in `mariadb.yaml`) dumps the live DB before every upgrade, keeping 10 dumps on `grimmory-mariadb-backups`. It blocks the upgrade if the server is unreachable; set `DUMP_REQUIRED: "false"` to ship a fix for a down DB.
-- `grimmory-mariadb-data` uses the `snapshot-daily` Longhorn RecurringJob (local snapshots, retain 7).
-- The `mariadb-upgrade-rehearsal` workflow rehearses base→head upgrades on arm64; reproduce locally with `.github/scripts/mariadb-upgrade-rehearsal.sh` (OrbStack).
-
 ## NAS-backed SMB shares (Unraid)
 
 Pods mount Unraid SMB shares via `csi-driver-smb` (no in-tree CIFS; NFS lacks credential auth and depends on node-IP stability — see `TODO/ipv6-stability.md`). `kube-system/csi-driver-smb-config/` holds one shared `smb-creds` ExternalSecret (1Password Login `unraid-k8s-user`) and the share PVs in `app/shares/`; a JSON6902 patch in `app/kustomization.yaml` injects all constant fields.
