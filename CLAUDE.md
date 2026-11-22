@@ -71,6 +71,7 @@ cd tofu && tofu plan                                        # then tofu apply
 3. Commit to `main`.
 
 - `HelmRepository` goes in `namespace: flux-system`; `HelmRelease` in the app's namespace with `install.createNamespace: true`.
+- OCI-hosted charts use an `OCIRepository` (`ref.tag` + `ref.digest`, helm `layerSelector`) referenced via `chartRef`, not a `type: oci` HelmRepository — Flux's `chart.spec.version` can't hold a digest, so Renovate can't pin it. See `forgejo`.
 - A `HelmRepository` used by one app lives in that app's `app/` dir. When a second app needs it, move it to `kubernetes/apps/flux-repositories/helm-repositories/app/` and add `dependsOn: helm-repositories` to every consumer (two Kustomizations can't own the same object). `bjw-s` and `grafana` already live there.
 
 ### Split Kustomizations when a CR consumes a CRD from the same repo

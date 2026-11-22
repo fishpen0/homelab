@@ -1,0 +1,16 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: forgejo
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: oci://code.forgejo.org/forgejo-helm/forgejo
+  # Renovate bumps tag + digest together; Flux pulls by digest, so a re-pushed
+  # tag can't change what's deployed.
+  ref:
+    tag: 17.3.1
+    digest: sha256:38d6d9ea57512808754d310bd6c0fe717d697b5f67ea4e34bdb8500ab49b0343
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
