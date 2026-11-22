@@ -44,7 +44,7 @@ Run `mise install` once. Infrastructure lives in its own namespace; user-facing 
 
 ## Key Conventions
 
-- **Everything deploys via HelmRelease** — no raw Deployments. Wrap plain images in bjw-s `app-template` (see `manyfold`).
+- **Everything deploys via HelmRelease** — no raw Deployments. Wrap plain images in bjw-s `app-template`.
 - Every directory's `kustomization.yaml` must list new resources explicitly.
 - **Secrets**: SOPS + age (`*.sops.yaml`, key at `talos/age-key.txt`, gitignored) or ExternalSecrets from 1Password.
 - Longhorn PVCs use the `longhorn` storage class.
@@ -111,13 +111,6 @@ The data disk is `/var/mnt/longhorn`, a directory on EPHEMERAL declared by `talo
 - Longhorn refuses two disks on one filesystem. To move a node's disk path, evict and remove the old disk first, then add the new one — one node at a time, all volumes `healthy` between nodes.
 - Longhorn doesn't create a missing disk directory; apply the `UserVolumeConfig` before adding a new node's disk.
 - `replica-auto-balance` is off, so replicas can end up uneven after node-by-node maintenance.
-
-## Database upgrades (grimmory MariaDB)
-
-- Keep `MARIADB_AUTO_UPGRADE: "1"`; without it the entrypoint skips `mariadb-upgrade` on image bumps.
-- A `pre-upgrade` Helm hook Job (`dump` controller in `mariadb.yaml`) dumps the live DB before every upgrade, keeping 10 dumps on `grimmory-mariadb-backups`. It blocks the upgrade if the server is unreachable; set `DUMP_REQUIRED: "false"` to ship a fix for a down DB.
-- `grimmory-mariadb-data` uses the `snapshot-daily` Longhorn RecurringJob (local snapshots, retain 7).
-- The `mariadb-upgrade-rehearsal` workflow rehearses base→head upgrades on arm64; reproduce locally with `.github/scripts/mariadb-upgrade-rehearsal.sh` (OrbStack).
 
 ## NAS-backed SMB shares (Unraid)
 
