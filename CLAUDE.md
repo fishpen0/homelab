@@ -44,7 +44,7 @@ Run `mise install` once. Infrastructure lives in its own namespace; user-facing 
 
 ## Key Conventions
 
-- **Everything deploys via HelmRelease** — no raw Deployments. Wrap plain images in bjw-s `app-template` (see `manyfold`).
+- **Everything deploys via HelmRelease** — no raw Deployments. Wrap plain images in bjw-s `app-template`.
 - Every directory's `kustomization.yaml` must list new resources explicitly.
 - **Secrets**: SOPS + age (`*.sops.yaml`, key at `talos/age-key.txt`, gitignored) or ExternalSecrets from 1Password.
 - Longhorn PVCs use the `longhorn` storage class.
